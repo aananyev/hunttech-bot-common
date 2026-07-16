@@ -36,10 +36,13 @@
   - `_mask_db_url()` — safe URL display for Telegram
 - **SetupDb FSM** (`telegram/setup_db.py`) — `/setup db` wizard for admin:
   - Admin-only command (master admin only)
+  - Subcommands: `/setup db` (FSM), `/setup db test` (standalone test), `/setup db show` (show config)
   - 5-step FSM: URL → pool_min → pool_max → sslmode → confirm
   - SSL mode selection via inline keyboard (disable/prefer/require/verify-ca/verify-full)
-  - Connection test before saving
+  - Connection test before saving (both in FSM and standalone `/setup db test`)
   - Skip support for keeping existing values
+  - `/setup db show` — masked display of current DB config
+  - Admin-only: regular users never see these commands in menu or /help
   - `DatabasePool` — asyncpg connection pool with SSL/TLS, timeouts, health checks
   - `PoolConfig` — typed configuration with DATABASE_URL parsing (query params: sslmode, connect_timeout, pool_min/max, statement_timeout, application_name)
   - `BaseRepository` — generic CRUD repository (get_by_id, find_all, find_where, create, update, delete, bulk_create, upsert, count, exists, raw_query)

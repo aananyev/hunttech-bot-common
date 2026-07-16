@@ -141,6 +141,16 @@ User management module — per-bot access control, settings, and Telegram UI.
 - `get_standard_groups()` — Standard CommandGroups for help rendering
 - Constants: `ACCESS_DENIED_TEXT`, `ACCESS_REQUEST_SENT_TEXT`, `ACCESS_GRANTED_TEXT`, `INVITATION_TEXT`, `ACCESS_REVOKED_TEXT`
 
+### Setup DB (`setup_db.py`)
+
+Admin-only FSM wizard for database configuration:
+
+- `cmd_setup_db()` — Route `/setup db`, `/setup db test`, `/setup db show`
+- `_cmd_db_show()` — Show current DB config (masked URL)
+- `_cmd_db_test()` — Test connection standalone (outside FSM)
+- `SetupDbStates` — FSM states: url → pool_min → pool_max → sslmode → confirm
+- Regular users never see these commands (admin check inside handler)
+
 ## hunttech_bot_common.database
 
 Complete async PostgreSQL layer for Telegram bots.

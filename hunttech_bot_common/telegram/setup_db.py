@@ -85,39 +85,143 @@ async def cmd_setup_db(
     access_manager: Any,
     config_service: DbConfigService | None = None,
 ) -> None:
-    """Handle /setup db command (admin-only)."""
+    """Handle /setup db, /setup db test, /setup db show (admin-only)."""
     user_id = message.from_user.id
 
     if not access_manager or not access_manager.is_admin(user_id):
-        await message.answer("\U0001f6ab **\u041a\u043e\u043c\u0430\u043d\u0434\u0430 доступна только администратору.**")
+        await message.answer("\U0001f6ab **\u041a\u043e\u043c\u0430\u043d\u0434\u0430 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0443.**")
         return
 
     args = (command.args or "").strip().lower()
-    if args != "db":
-        return
 
     if config_service is None:
         config_service = DbConfigService()
 
-    current = config_service.load()
-    display = config_service.format_config_display(current)
+    # /setup db show — show current config
+    if args == "db show":
+        await _cmd_db_show(message, config_service)
+        return
 
-    await state.set_state(SetupDbStates.url)
-    await state.update_data(config_service=config_service)
+    # /setup db test — test connection
+    if args == "db test":
+        await _cmd_db_test(message, config_service)
+        return
 
-    url_example = "postgresql://user:" + _PWD_PLACEHOLDER + "@host:5432/database_name"
+    # /setup db — start FSM wizard
+    if args == "db":
+        current = config_service.load()
+        display = config_service.format_config_display(current)
 
+        await state.set_state(SetupDbStates.url)
+        await state.update_data(config_service=config_service)
+
+        url_example = "postgresql://user_name:" + _PWD_PLACEHOLDER + "@host:5432/database_name"
+
+        await message.answer(
+            f"{display}\n\n"
+            "\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE_URL** \u0434\u043b\u044f \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u043a PostgreSQL.\n\n"
+            "\u0424\u043e\u0440\u043c\u0430\u0442:\n"
+            f"`{url_example}`\n\n"
+            "\u0414\u043b\u044f \u0443\u0434\u0430\u043b\u0451\u043d\u043d\u043e\u0433\u043e \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0443\u043a\u0430\u0436\u0438\u0442\u0435 \u0445\u043e\u0441\u0442 \u0438 \u043f\u043e\u0440\u0442.\n"
+            "\u0415\u0441\u043b\u0438 \u043d\u0443\u0436\u043d\u043e \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0442\u043e\u043b\u044c\u043a\u043e \u0447\u0430\u0441\u0442\u044c \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u043e\u0432 \u2014 "
+            "\u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u043e\u0432\u044b\u0439 URL \u0438\u043b\u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u044c\u0442\u0435 `/skip` \u0447\u0442\u043e\u0431\u044b \u043e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439.",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_cancel_kb(),
+        )
+        return
+
+    # Unknown subcommand
     await message.answer(
-        f"{display}\n\n"
-        "\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE_URL** для подключения к PostgreSQL.\n\n"
-        "\u0424\u043e\u0440\u043c\u0430\u0442:\n"
-        f"`{url_example}`\n\n"
-        "\u0414\u043b\u044f удалённого сервера укажите хост и порт.\n"
-        "\u0415\u0441\u043b\u0438 нужно изменить только часть параметров \u2014 "
-        "\u0432\u0432\u0435\u0434\u0438\u0442\u0435 новый URL или отправьте `/skip` чтобы оставить текущий.",
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=_cancel_kb(),
+        "\U0001f6ab **\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u0430\u044f \u043f\u043e\u0434\u043a\u043e\u043c\u0430\u043d\u0434\u0430.**\n\n"
+        "\u0414\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u044b:\n"
+        "\u2022 `/setup db` \u2014 \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u043a \u0411\u0414\n"
+        "\u2022 `/setup db test` \u2014 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435\n"
+        "\u2022 `/setup db show` \u2014 \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0443\u044e \u043a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044e"
     )
+
+
+# ── /setup db show ──────────────────────────────────────────
+
+
+async def _cmd_db_show(message: Message, config_service: DbConfigService) -> None:
+    """Show current database configuration (admin-only)."""
+    config = config_service.load()
+    display = config_service.format_config_display(config)
+
+    if config:
+        text = (
+            f"{display}\n\n"
+            "\U0001f4cb **\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435:**\n"
+            "\u2022 `/setup db` \u2014 \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438\n"
+            "\u2022 `/setup db test` \u2014 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435"
+        )
+    else:
+        text = display + "\n\n" + "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 `/setup db` \u0447\u0442\u043e\u0431\u044b \u043d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435."
+
+    await message.answer(text)
+
+
+# ── /setup db test ──────────────────────────────────────────
+
+
+async def _cmd_db_test(message: Message, config_service: DbConfigService) -> None:
+    """Test database connection (admin-only, standalone)."""
+    config = config_service.load()
+    if not config or not config.get("url"):
+        await message.answer(
+            "\u274c **\u0411\u0430\u0437\u0430 \u0434\u0430\u043d\u043d\u044b\u0445 \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d\u0430.**\n"
+            "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 `/setup db` \u0434\u043b\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438."
+        )
+        return
+
+    url = config["url"]
+    sslmode = config.get("sslmode", "prefer")
+
+    host_part = "..."
+    if "@" in url and "/" in url.split("@")[1]:
+        host_part = url.split("@")[1].split("/")[0]
+
+    status_msg = await message.answer(
+        "\U0001f50c **\u0422\u0435\u0441\u0442\u0438\u0440\u0443\u044e \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0431\u0430\u0437\u0435 \u0434\u0430\u043d\u043d\u044b\u0445...**\n"
+        f"\u0425\u043e\u0441\u0442: {host_part}\n"
+        f"SSL: {sslmode}\n\n"
+        "\u23f3 \u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u043f\u043e\u0434\u043e\u0436\u0434\u0438\u0442\u0435..."
+    )
+
+    try:
+        url_with_params = f"{url}?sslmode={sslmode}&connect_timeout=5&pool_min=1&pool_max=1"
+        config_obj = PoolConfig.from_url(url_with_params)
+        pool = DatabasePool(config_obj)
+        await pool.connect()
+
+        health = await pool.health_check()
+        await pool.close()
+
+        if health.get("status") == "connected":
+            latency = health.get("latency_ms", "?")
+            result_text = (
+                "\u2705 **\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0443\u0441\u043f\u0435\u0448\u043d\u043e!**\n\n"
+                f"\u2022 \u0421\u0442\u0430\u0442\u0443\u0441: {health['status']}\n"
+                f"\u2022 \u0417\u0430\u0434\u0435\u0440\u0436\u043a\u0430: {latency} \u043c\u0441"
+            )
+        else:
+            result_text = (
+                f"\u26a0\ufe0f **\u0421\u0442\u0430\u0442\u0443\u0441: {health.get('status', 'unknown')}**\n"
+                f"\u041e\u0448\u0438\u0431\u043a\u0430: {health.get('error', 'unknown')}"
+            )
+    except Exception as e:
+        logger.warning("DB connection test failed: %s", e)
+        result_text = (
+            "\u274c **\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f:**\n"
+            f"`{e}`\n\n"
+            "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435:\n"
+            "\u2022 \u0414\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u043b\u0438 \u0445\u043e\u0441\u0442\n"
+            "\u2022 \u041f\u0440\u0430\u0432\u0438\u043b\u044c\u043d\u043e\u0441\u0442\u044c URL\n"
+            "\u2022 \u041f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b SSL\n"
+            "\u2022 \u041d\u0435 \u0431\u043b\u043e\u043a\u0438\u0440\u0443\u0435\u0442 \u043b\u0438 \u0444\u0430\u0439\u0440\u0432\u043e\u043b"
+        )
+
+    await status_msg.edit_text(result_text)
 
 
 # ── FSM Step: URL ─────────────────────────────────────────────
@@ -343,7 +447,7 @@ async def setup_db_test(callback: CallbackQuery, state: FSMContext) -> None:
         else:
             result_text = (
                 f"\u26a0\ufe0f **\u0421\u0442\u0430\u0442\u0443\u0441: {health.get('status', 'unknown')}**\n"
-                f"\u041e\u0448\u0438\u0431\u043a\u0430: {health.get('error', 'неизвестная')}\n\n"
+                f"\u041e\u0448\u0438\u0431\u043a\u0430: {health.get('error', 'unknown')}"
                 "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 параметры подключения."
             )
     except Exception as e:
