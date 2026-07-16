@@ -140,3 +140,49 @@ User management module — per-bot access control, settings, and Telegram UI.
 - `get_standard_user_commands()` / `get_standard_admin_commands()` — Standard CommandDefs
 - `get_standard_groups()` — Standard CommandGroups for help rendering
 - Constants: `ACCESS_DENIED_TEXT`, `ACCESS_REQUEST_SENT_TEXT`, `ACCESS_GRANTED_TEXT`, `INVITATION_TEXT`, `ACCESS_REVOKED_TEXT`
+
+## hunttech_bot_common.database
+
+Complete async PostgreSQL layer for Telegram bots.
+
+### Pool (`pool.py`)
+
+- `PoolConfig` — Typed config with `from_url()` parsing query params from DATABASE_URL:
+  - SSL modes: disable, allow, prefer, require, verify-ca, verify-full
+  - Connection pooling (min_size, max_size)
+  - connect_timeout, statement_timeout
+- `DatabasePool` — asyncpg pool wrapper:
+  - `connect()` / `close()` / `recreate()` — lifecycle
+  - `acquire()` — async context manager for connections
+  - `execute()`, `fetch()`, `fetchrow()`, `fetchval()` — query shortcuts
+  - `health_check()` — returns status, latency_ms, pool_stats
+
+### Repository (`repository.py`)
+
+- `BaseRepository` — Generic CRUD for any table:
+  - `get_by_id()`, `find_all()`, `find_where()` — read
+  - `create()`, `bulk_create()` — insert
+  - `update()`, `upsert()` — update/insert on conflict
+  - `delete()`, `delete_where()` — delete
+  - `count()`, `exists()`, `exists_where()` — check
+  - `raw_query()`, `raw_execute()` — raw SQL
+
+### Unit of Work (`unit_of_work.py`)
+
+- `UnitOfWork` — Transaction management:
+  - `async with UnitOfWork(pool) as uow:` — auto commit/rollback
+  - `start()` / `commit()` / `rollback()` / `close()` — manual control
+  - `conn` — access to underlying asyncpg connection
+  - `is_active` — check if transaction is open
+
+### Migrations (`migrations.py`)
+
+- `DatabaseMigrator` — SQL file-based versioned migrations:
+  - `run()` — apply pending migrations (ordered by version)
+  - `status()` — list all migrations with applied info
+  - `get_pending_migrations()` — check what's pending
+  - `rollback_one(version)` — rollback by version
+  - `reset()` — drop tracking table and re-run
+  - Migration files: `001_description.sql`, `002_add_column.sql`
+  - Rollback files: `001_rollback_description.sql`
+  - Tracking table: `_migrations` (auto-created)

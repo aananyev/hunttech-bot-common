@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from hunttech_bot_common.exceptions import (
     AIAuthenticationError,
@@ -24,6 +24,7 @@ from hunttech_bot_common.exceptions import (
 from hunttech_bot_common.users.base import UserRecord, user_from_telegram
 from hunttech_bot_common.users.access import AccessManager
 from hunttech_bot_common.users.settings import UserSettingsManager
+from hunttech_bot_common.database import DatabasePool, PoolConfig, BaseRepository, UnitOfWork, DatabaseMigrator
 
 __all__ = [
     "__version__",
@@ -45,4 +46,9 @@ __all__ = [
     "user_from_telegram",
     "AccessManager",
     "UserSettingsManager",
+    "DatabasePool",
+    "PoolConfig",
+    "BaseRepository",
+    "UnitOfWork",
+    "DatabaseMigrator",
 ]
