@@ -314,11 +314,9 @@ class DatabasePool:
             pool_stats = {
                 "min_size": self._config.min_size,
                 "max_size": self._config.max_size,
-                "current_size": len(self._pool._holders),
-                "available": sum(
-                    1 for h in self._pool._holders if not h._in_use
-                ),
-                "size": self._pool.size,
+                "current_size": self._pool.get_size(),
+                "available": self._pool.get_idle_size(),
+                "size": self._pool.get_size(),
             }
 
             return {
