@@ -28,6 +28,18 @@
 
 ### Added
 - **Database module** — complete async PostgreSQL layer:
+  ...
+- **DbConfigService** (`services/db_config_service.py`) — persistent DB config storage in JSON:
+  - `load()` / `save()` / `delete()` — config CRUD with atomic writes
+  - `to_pool_config()` — convert to PoolConfig for direct use
+  - `format_config_display()` — formatted display with URL password masking
+  - `_mask_db_url()` — safe URL display for Telegram
+- **SetupDb FSM** (`telegram/setup_db.py`) — `/setup db` wizard for admin:
+  - Admin-only command (master admin only)
+  - 5-step FSM: URL → pool_min → pool_max → sslmode → confirm
+  - SSL mode selection via inline keyboard (disable/prefer/require/verify-ca/verify-full)
+  - Connection test before saving
+  - Skip support for keeping existing values
   - `DatabasePool` — asyncpg connection pool with SSL/TLS, timeouts, health checks
   - `PoolConfig` — typed configuration with DATABASE_URL parsing (query params: sslmode, connect_timeout, pool_min/max, statement_timeout, application_name)
   - `BaseRepository` — generic CRUD repository (get_by_id, find_all, find_where, create, update, delete, bulk_create, upsert, count, exists, raw_query)
