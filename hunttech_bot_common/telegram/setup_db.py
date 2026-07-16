@@ -4,7 +4,7 @@ Admin-only command: /setup db
 
 Allows the master admin to:
 1. View current DB config
-2. Enter/update DATABASE_URL
+2. Enter/update DATABASE-URL
 3. Set pool_min, pool_max, sslmode
 4. Test the connection
 5. Save or discard
@@ -119,7 +119,7 @@ async def cmd_setup_db(
 
         await message.answer(
             f"{display}\n\n"
-            "\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE_URL** \u0434\u043b\u044f \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u043a PostgreSQL.\n\n"
+            "\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE-URL** \u0434\u043b\u044f \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u043a PostgreSQL.\n\n"
             "\u0424\u043e\u0440\u043c\u0430\u0442:\n"
             f"`{url_example}`\n\n"
             "\u0414\u043b\u044f \u0443\u0434\u0430\u043b\u0451\u043d\u043d\u043e\u0433\u043e \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0443\u043a\u0430\u0436\u0438\u0442\u0435 \u0445\u043e\u0441\u0442 \u0438 \u043f\u043e\u0440\u0442.\n"
@@ -249,7 +249,7 @@ async def setup_db_url(message: Message, state: FSMContext) -> None:
         url_example = "postgresql://user:***@host:5432/db"
         await message.answer(
             "\u274c **\u041d\u0435\u0432\u0435\u0440\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442.** "
-            "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE_URL:\n\n"
+            "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE-URL:\n\n"
             "\u0424\u043e\u0440\u043c\u0430\u0442:\n"
             f"`{url_example}`\n\n"
             "\u0413\u0434\u0435:\n"
