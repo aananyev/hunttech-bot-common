@@ -56,8 +56,10 @@ def escape_md_simple(text: str) -> str:
 
 
 def escape_html(text: str) -> str:
-    """Escape HTML special characters for Telegram HTML parse mode."""
-    return stdlib_html.escape(text, quote=True)
+    """Escape HTML special characters for Telegram HTML parse mode.
+    Принимает любой тип: str(), int, float — всё оборачивается в str().
+    """
+    return stdlib_html.escape(str(text), quote=True)
 
 
 # --- Message splitting ---
