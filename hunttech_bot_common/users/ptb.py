@@ -22,6 +22,7 @@ Usage::
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, Callable
 
 from hunttech_bot_common.users.access import AccessManager
