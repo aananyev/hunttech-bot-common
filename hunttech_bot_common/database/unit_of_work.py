@@ -83,7 +83,7 @@ class UnitOfWork:
             self._conn is not None
             and not self._conn.is_closed()
             and self._transaction is not None
-            and not self._transaction._closed
+            and not getattr(self._transaction, "_closed", True)
         )
 
     async def start(self) -> None:
@@ -105,7 +105,7 @@ class UnitOfWork:
 
     async def commit(self) -> None:
         """Commit the current transaction."""
-        if self._transaction is None or self._transaction._closed:
+        if self._transaction is None or getattr(self._transaction, "_closed", True):
             raise DatabaseError("No active transaction to commit")
 
         try:
@@ -117,7 +117,7 @@ class UnitOfWork:
 
     async def rollback(self) -> None:
         """Rollback the current transaction."""
-        if self._transaction is None or self._transaction._closed:
+        if self._transaction is None or getattr(self._transaction, "_closed", True):
             return
 
         try:
