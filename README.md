@@ -2,6 +2,18 @@
 
 Shared library for HuntTech Telegram bots providing common utilities, AI client abstractions, configuration management, and security helpers.
 
+**Цель библиотеки** — ускорить разработку новых ботов за счёт переиспользования:
+- [x] Конфигурация через `AppSettings` (единые env-переменные)
+- [x] AI-клиент с retry (OpenAI-совместимый)
+- [x] Telegram-утилиты (команды, экранирование, разбивка сообщений)
+- [x] Файловые утилиты (safe_join, sanitize_filename, валидация)
+- [x] Логирование с маскингом секретов
+- [x] Безопасность (sanitize_text_input, validate_url)
+- [x] База данных (asyncpg pool, repository, unit of work, миграции)
+- [x] Управление пользователями (AccessManager, middleware, Telegram UI)
+
+Полный стандарт создания ботов HuntTech: [`HUNTECH_BOT_STANDARD.md`](HUNTECH_BOT_STANDARD.md)
+
 ## Installation
 
 ```bash
