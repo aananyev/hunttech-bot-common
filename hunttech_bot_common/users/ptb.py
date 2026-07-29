@@ -189,6 +189,7 @@ class PTBUserHandlers:
         user_id = update.effective_user.id
         args = message.text.strip().split()
         cmd = args[1] if len(args) > 1 else "help"
+        logger.info("USER_MGMT: admin_id=%d action=%s target=%s", user_id, cmd, args[2] if len(args) > 2 else "—")
 
         if not self._am.is_admin(user_id):
             await message.reply_text("Только администратор может управлять пользователями.")
