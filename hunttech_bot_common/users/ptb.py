@@ -31,6 +31,16 @@ from hunttech_bot_common.telegram import CommandDef, CommandGroup
 logger = logging.getLogger(__name__)
 
 
+def get_shared_access_path() -> Path:
+    """Get the shared access users database path for all HuntTech bots.
+    All bots share the same file at ~/.hermes/hunttech_bots/access_users.json."""
+    try:
+        from hermes_constants import get_hermes_home
+        return get_hermes_home() / "hunttech_bots" / "access_users.json"
+    except ImportError:
+        return Path.home() / ".hermes" / "hunttech_bots" / "access_users.json"
+
+
 class PTBUserHandlers:
     """Standard user management handlers for python-telegram-bot.
 
@@ -43,6 +53,21 @@ class PTBUserHandlers:
     - /user ban <id> — admin: ban user
     - /user unban <id> — admin: unban user
     """
+
+    @classmethod
+    def from_shared_db(
+        cls,
+        master_admin_id: int,
+        bot_name: str = "Bot",
+        **kwargs: Any,
+    ) -> "PTBUserHandlers":
+        """Create PTBUserHandlers with the shared user database."""
+        am = AccessManager(
+            data_path=get_shared_access_path(),
+            master_admin_id=master_admin_id,
+            bot_name=bot_name,
+        )
+        return cls(access_manager=am, bot_name=bot_name, **kwargs)
 
     def __init__(
         self,
