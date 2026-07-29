@@ -36,6 +36,11 @@ from hunttech_bot_common.users.telegram import (
     INVITATION_TEXT,
     ACCESS_REVOKED_TEXT,
 )
+from hunttech_bot_common.users.ptb import (
+    PTBUserHandlers,
+    get_standard_commands,
+    get_admin_commands,
+)
 
 __all__ = [
     "UserRecord",
@@ -59,4 +64,7 @@ __all__ = [
     "ACCESS_GRANTED_TEXT",
     "INVITATION_TEXT",
     "ACCESS_REVOKED_TEXT",
+    "PTBUserHandlers",
+    "get_standard_commands",
+    "get_admin_commands",
 ]
