@@ -137,7 +137,7 @@ class UnitOfWork:
         if (
             not self._committed
             and self._transaction is not None
-            and not self._transaction._closed
+            and not getattr(self._transaction, "_closed", False)
         ):
             try:
                 await self._transaction.rollback()
