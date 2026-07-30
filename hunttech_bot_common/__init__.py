@@ -25,6 +25,7 @@ from hunttech_bot_common.users.base import UserRecord, user_from_telegram
 from hunttech_bot_common.users.access import AccessManager
 from hunttech_bot_common.users.settings import UserSettingsManager
 from hunttech_bot_common.database import DatabasePool, PoolConfig, BaseRepository, UnitOfWork, DatabaseMigrator
+from hunttech_bot_common.recognition import recognize_document, RecognitionResult, DOCUMENT_SCHEMA, INSTRUCTIONS
 
 __all__ = [
     "__version__",
