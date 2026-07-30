@@ -32,13 +32,42 @@ logger = logging.getLogger(__name__)
 
 
 def get_shared_access_path() -> Path:
-    """Get the shared access users database path for all HuntTech bots.
-    All bots share the same file at ~/.hermes/hunttech_bots/access_users.json."""
+    """[DEPRECATED] Get the shared access users database path for all HuntTech bots.
+
+    Use :func:`get_bot_access_path` instead — each bot should have its own file.
+
+    All bots share the same file at ~/.hermes/hunttech_bots/access_users.json.
+    """
+    import warnings
+    warnings.warn(
+        "get_shared_access_path is deprecated, use get_bot_access_path(bot_name)",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     try:
         from hermes_constants import get_hermes_home
         return get_hermes_home() / "hunttech_bots" / "access_users.json"
     except ImportError:
         return Path.home() / ".hermes" / "hunttech_bots" / "access_users.json"
+
+
+def get_bot_access_path(bot_name: str) -> Path:
+    """Get the per-bot access users database path.
+
+    Each bot has its own file at ``~/.hermes/hunttech_bots/access_{bot_name}.json``.
+    This ensures that access is granted per-bot, not globally.
+
+    Args:
+        bot_name: Unique bot identifier (e.g. ``hunttechprotocols``).
+    """
+    bot_name = bot_name.strip().replace("/", "_").replace("\\", "_")
+    try:
+        from hermes_constants import get_hermes_home
+        base = get_hermes_home() / "hunttech_bots"
+    except ImportError:
+        base = Path.home() / ".hermes" / "hunttech_bots"
+    base.mkdir(parents=True, exist_ok=True)
+    return base / f"access_{bot_name}.json"
 
 
 class PTBUserHandlers:
@@ -53,6 +82,29 @@ class PTBUserHandlers:
     - /user ban <id> — admin: ban user
     - /user unban <id> — admin: unban user
     """
+
+    @classmethod
+    def from_bot_db(
+        cls,
+        bot_name: str,
+        master_admin_id: int,
+        **kwargs: Any,
+    ) -> "PTBUserHandlers":
+        """Create PTBUserHandlers with a per-bot access database.
+
+        Each bot gets its own access file, so access must be granted
+        per-bot — not shared across all HuntTech bots.
+
+        Args:
+            bot_name: Unique bot identifier (e.g. ``hunttechprotocols``).
+            master_admin_id: Telegram user ID of the master admin.
+        """
+        am = AccessManager(
+            data_path=get_bot_access_path(bot_name),
+            master_admin_id=master_admin_id,
+            bot_name=bot_name,
+        )
+        return cls(access_manager=am, bot_name=bot_name, **kwargs)
 
     @classmethod
     def from_shared_db(

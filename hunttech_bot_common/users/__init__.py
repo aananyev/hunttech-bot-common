@@ -40,6 +40,8 @@ from hunttech_bot_common.users.ptb import (
     PTBUserHandlers,
     get_standard_commands,
     get_admin_commands,
+    get_bot_access_path,
+    get_shared_access_path,
 )
 
 __all__ = [
@@ -67,4 +69,6 @@ __all__ = [
     "PTBUserHandlers",
     "get_standard_commands",
     "get_admin_commands",
+    "get_bot_access_path",
+    "get_shared_access_path",
 ]

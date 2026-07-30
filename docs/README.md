@@ -37,7 +37,8 @@ pip install -e /path/to/hunttech-bot-common
 
 ## `users` — Управление пользователями
 
-**Центральный модуль.** Все HuntTech-боты используют единую базу пользователей.
+**Центральный модуль.** Каждый HuntTech-бот использует свою базу пользователей (`access_{bot_name}.json`).
+Доступ предоставляется администратором **per-bot**, а не глобально.
 
 ### Архитектура
 
@@ -89,7 +90,13 @@ am.user_can_use_command(user_id, "setup")  # bool
 ```python
 from hunttech_bot_common.users.ptb import PTBUserHandlers
 
-# Вариант 1: единая БД для всех ботов (рекомендуется)
+# Вариант 1: per-bot база (рекомендуется — доступ per-bot)
+user_handlers = PTBUserHandlers.from_bot_db(
+    bot_name="my_bot",
+    master_admin_id=272980897,
+)
+
+# Вариант 2: единая БД для всех ботов (устарело)
 user_handlers = PTBUserHandlers.from_shared_db(
     master_admin_id=272980897,
     bot_name="My Bot",
