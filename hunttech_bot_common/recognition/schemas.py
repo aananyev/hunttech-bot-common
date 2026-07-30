@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 from hunttech_bot_common.recognition.text_hints import (
     _normalize_enum,
+    _normalize_confidence,
     _infer_flow_type,
     _infer_document_type,
 )
