@@ -6,6 +6,11 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from hunttech_bot_common.recognition.text_hints import (
+    _normalize_enum,
+    _infer_flow_type,
+    _infer_document_type,
+)
 
 DOCUMENT_SCHEMA: dict[str, Any] = {
     "type": "object",
