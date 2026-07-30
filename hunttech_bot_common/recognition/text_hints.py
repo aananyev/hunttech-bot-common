@@ -16,6 +16,12 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
         normalized["document_type"] = "INVOICE"
         normalized["flow_type"] = "PRIMARY"
         normalized.pop("receipt_organization", None)
+    if "счет-фактура" in lowered and normalized.get("document_type") in ("", "CONTRACT", "UNKNOWN"):
+        normalized["document_type"] = "UPD"
+        normalized["flow_type"] = "PRIMARY"
+    if "акт выполненных работ" in lowered or "акт сдачи-приемки" in lowered or "акт выполненных услуг" in lowered or "акт сверки" in lowered:
+        normalized["document_type"] = "ACT"
+        normalized["flow_type"] = "PRIMARY"
     if _looks_like_receipt(text):
         normalized["document_type"] = "RECEIPT"
         normalized["flow_type"] = "ADVANCE_REPORT"
