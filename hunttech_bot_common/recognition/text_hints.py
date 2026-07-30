@@ -12,6 +12,10 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
     if "универсальный передаточный документ" in lowered:
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
+    if _looks_like_invoice(lowered):
+        normalized["document_type"] = "INVOICE"
+        normalized["flow_type"] = "PRIMARY"
+        normalized.pop("receipt_organization", None)
     if _looks_like_receipt(text):
         normalized["document_type"] = "RECEIPT"
         normalized["flow_type"] = "ADVANCE_REPORT"
@@ -75,6 +79,17 @@ def _looks_like_receipt(text: str) -> bool:
             if any(kw in nearby for kw in ("накоп", "чека", "касс", "фискал", "документ", "признак")):
                 return True
     return False
+
+
+def _looks_like_invoice(lowered: str) -> bool:
+    """Проверяет, похож ли текст на счёт на оплату (PRIMARY, не ADVANCE_REPORT)."""
+    if "счет на оплату" in lowered or "счёт на оплату" in lowered:
+        return True
+    if ("счет" in lowered or "счёт" in lowered) and ("расчетный счет" in lowered or "р/с" in lowered or "банк" in lowered):
+        if "покупатель" in lowered or "заказчик" in lowered or "плательщик" in lowered:
+            return True
+    return False
+
 
 def _extract_document_number_date(text: str) -> tuple[str | None, str | None] | None:
     patterns = [
