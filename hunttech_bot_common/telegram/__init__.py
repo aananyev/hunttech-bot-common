@@ -22,6 +22,15 @@ class CommandDef:
     admin: bool = False
     hidden: bool = False
     group: str = ""
+    aliases: list[str] = field(default_factory=list)
+    subcommands: list[str] = field(default_factory=list)
+    syntax: str = ""
+    show_in_help: bool = True
+    show_in_menu: bool = True
+    details: str = ""
+    handler_name: str = ""
+    order: int = 0
+    public: bool = True
 
 
 @dataclass
@@ -31,6 +40,8 @@ class CommandGroup:
     key: str
     title: str
     emoji: str = ""
+    description: str = ""
+    order: int = 0
 
 
 # --- Permission checker protocol ---
