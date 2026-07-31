@@ -62,7 +62,9 @@ def _confirm_kb() -> InlineKeyboardMarkup:
     )
 
 SSLMODE_BUTTONS: list[list[InlineKeyboardButton]] = [
-    [InlineKeyboardButton(text="disable", callback_data="sslmode:disable")],
+    # disable ПЕРВЫМ: для локальной PG11 без SSL prefer/require не работают
+    # (asyncpg: "rejected SSL upgrade", фолбэка нет)
+    [InlineKeyboardButton(text="disable (PG11 без SSL)", callback_data="sslmode:disable")],
     [InlineKeyboardButton(text="prefer (default)", callback_data="sslmode:prefer")],
     [InlineKeyboardButton(text="require", callback_data="sslmode:require")],
     [InlineKeyboardButton(text="verify-ca", callback_data="sslmode:verify-ca")],
@@ -325,7 +327,9 @@ async def setup_db_pool_max(message: Message, state: FSMContext) -> None:
         await state.set_state(SetupDbStates.sslmode)
         await message.answer(
             "\u2705 Max pool оставлен по умолчанию (10).\n\n"
-            "\U0001f512 **\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 режим SSL:**",
+            "\U0001f512 **\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 режим SSL:**\n"
+            "\U0001f4a1 Для локальной PostgreSQL 11 без SSL выберите **disable** "
+            "(prefer/require падают с «rejected SSL upgrade»).",
             reply_markup=SSLMODE_KEYBOARD,
         )
         return
