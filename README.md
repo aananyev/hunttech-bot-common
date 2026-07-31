@@ -11,6 +11,7 @@ Shared library for HuntTech Telegram bots providing common utilities, AI client 
 - [x] Безопасность (sanitize_text_input, validate_url)
 - [x] База данных (asyncpg pool, repository, unit of work, миграции)
 - [x] Управление пользователями (AccessManager, middleware, Telegram UI)
+- [x] **Email (конфигурация, SMTP/IMAP проверка, валидация)**
 
 Полный стандарт создания ботов HuntTech: [`HUNTECH_BOT_STANDARD.md`](HUNTECH_BOT_STANDARD.md)
 
@@ -59,6 +60,7 @@ print(response.content)
 - **files** - File handling, validation, and temporary directories
 - **logging** - Structured logging with secrets masking
 - **security** - URL validation, IP checking, input sanitization
+- **email** - Email configuration, SMTP/IMAP testing, input validation
 - **utils** - Async retry, chunking, datetime formatting
 - **exceptions** - Common exception hierarchy
 - **users** - User management module

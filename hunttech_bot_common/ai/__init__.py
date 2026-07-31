@@ -113,6 +113,7 @@ class AIClient:
         response_schema: type[T] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        timeout: float | None = None,
     ) -> AIResponse:
         """Send a completion request to the AI provider.
 
@@ -124,6 +125,8 @@ class AIClient:
             response_schema: Optional schema type to parse the response into.
             temperature: Optional temperature override.
             max_tokens: Optional max tokens override.
+            timeout: Optional per-call timeout override (seconds).
+                Falls back to default_timeout from constructor when None.
 
         Returns:
             An AIResponse with content, duration_ms, and usage.
@@ -147,6 +150,7 @@ class AIClient:
                     user_prompt=user_prompt,
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    timeout=timeout,
                 )
             except (AIConnectionError, AIRateLimitError, AITimeoutError) as exc:
                 last_exception = exc
@@ -165,6 +169,7 @@ class AIClient:
         user_prompt: str,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        timeout: float | None = None,
     ) -> AIResponse:
         headers: dict[str, str] = {
             "Content-Type": "application/json",
@@ -188,10 +193,11 @@ class AIClient:
         if max_tokens is not None:
             body["max_tokens"] = max_tokens
 
+        request_timeout = self.default_timeout if timeout is None else timeout
         start_time = time.monotonic()
 
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(self.default_timeout)) as client:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(request_timeout)) as client:
                 response = await client.post(
                     self.endpoint,
                     headers=headers,
@@ -199,7 +205,7 @@ class AIClient:
                 )
         except httpx.TimeoutException as exc:
             raise AITimeoutError(
-                f"AI request timed out after {self.default_timeout}s"
+                f"AI request timed out after {request_timeout}s"
             ) from exc
         except httpx.ConnectError as exc:
             raise AIConnectionError(
@@ -258,9 +264,10 @@ class MockAIClient:
         response_schema: type[T] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        timeout: float | None = None,
     ) -> AIResponse:
         """Return a mock response immediately."""
-        _ = system_prompt, user_prompt, temperature, max_tokens  # mark as used
+        _ = system_prompt, user_prompt, temperature, max_tokens, timeout  # mark as used
         content = self.response_text
         if response_schema is not None:
             try:

@@ -84,6 +84,19 @@ def setup_logging(
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
+    # Защита от захвата чужого процесса (например, Hermes CLI/gateway, где
+    # плагин HuntTech загружается в тот же процесс): если root-логгер уже
+    # настроен Hermes'ом (файловые обработчики ~/.hermes/logs/*.log), не
+    # сносим их и не вешаем консольный вывод на root — иначе логи агента
+    # (run_agent, conversation_loop и т.п.) начнут печататься в терминал.
+    has_hermes_file_handlers = any(
+        isinstance(h, logging.FileHandler)
+        and "hermes" in str(getattr(h, "baseFilename", "")).lower()
+        for h in root_logger.handlers
+    )
+    if has_hermes_file_handlers:
+        return
+
     # Remove existing handlers
     root_logger.handlers.clear()
 

@@ -31,6 +31,7 @@ pip install -e /path/to/hunttech-bot-common
 | `users` | **Управление пользователями (ключевой модуль)** |
 | `utils` | Общие утилиты (async_retry, chunk_list, format_datetime) |
 | `services` | Сервисы (db_config_service) |
+| `email` | **Email: конфигурация, проверка SMTP/IMAP, валидация** |
 | `exceptions` | Иерархия исключений |
 
 ---
@@ -145,6 +146,59 @@ from hunttech_bot_common.users.telegram import start_access_gate, request_access
 dp.message.middleware.register(AccessControlMiddleware(get_access_manager=lambda: am))
 dp.callback_query.middleware.register(CallbackAccessMiddleware(get_access_manager=lambda: am))
 ```
+
+---
+
+## `email` — Email: конфигурация, проверка подключения, валидация
+
+```python
+from hunttech_bot_common.email import (
+    load_email_config, save_email_config, clear_email_config,
+    format_email_config, default_email_config,
+    test_email_connections, test_smtp_connection, test_imap_connection,
+    validate_email, validate_hostname, validate_port, validate_password,
+)
+
+# Загрузка конфига (из JSON или .env)
+cfg = load_email_config()  # ищет email_config.json в CWD
+cfg = default_email_config()  # только .env, без файла
+
+# Сохранение/очистка
+save_email_config({"sender": "user@domain.ru", "password": "***"})
+clear_email_config()
+
+# Форматирование для вывода (пароль маскируется)
+print(format_email_config(cfg))
+# 📧 Текущая конфигурация email:
+#   • Отправитель: `alan@hunttech.ru`
+#   • SMTP-сервер: `smtp.yandex.ru:465`
+#   • IMAP-сервер: `imap.yandex.ru:993`
+#   • Пароль: `secr****`
+
+# Валидация ввода
+assert validate_email("user@domain.ru") is None
+assert validate_hostname("imap.yandex.ru") is None
+assert validate_port("993") is None
+assert validate_password("secret") is None
+
+# Асинхронная проверка SMTP + IMAP
+results = await test_email_connections(cfg, timeout=15)
+for r in results:
+    print(r.short)  # "✅ SMTP: письмо отправлено"
+    # или r.emoji, r.service, r.success, r.message
+```
+
+### Параметры .env по умолчанию
+
+```env
+MAIL_SENDER=alan@hunttech.ru
+MAIL_SMTP_HOST=smtp.yandex.ru
+MAIL_SMTP_PORT=465
+MAIL_IMAP_HOST=imap.yandex.ru
+MAIL_IMAP_PORT=993
+```
+
+Пароль по умолчанию: `HUNTTECH_DOCS_YANDEX_MAIL_PASSWORD` (env), либо через `/setup email`.
 
 ---
 

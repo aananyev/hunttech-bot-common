@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:
     from agent.plugin_llm import PluginLlmTextInput
@@ -31,24 +31,47 @@ def recognize_document(
     caption: str = "",
     original_name: str = "",
     settings: Any = None,
+    progress_callback: Callable[[str, str], None] | None = None,
 ) -> RecognitionResult:
+    """Recognize a document with optional stage progress reporting.
+
+    ``progress_callback(stage, message)`` is invoked synchronously at each
+    pipeline stage (mime_detect, extract_text, ocr_scan, ocr_image,
+    ai_parse, done). The callback runs in the calling thread — use
+    ``asyncio.run_coroutine_threadsafe`` from async callers.
+    """
     settings = settings or load_settings()
+    _emit(progress_callback, "mime_detect", "Определяю тип файла...")
     mime_type = _guess_mime(path)
     if _is_supported_image(mime_type):
-        return _recognize_image_document(llm, path, mime_type, caption=caption, original_name=original_name, settings=settings)
+        return _recognize_image_document(llm, path, mime_type, caption=caption, original_name=original_name, settings=settings, progress_callback=progress_callback)
 
+    _emit(progress_callback, "extract_text", "Извлекаю текст из документа...")
     extracted_text = _extract_text(path, mime_type)
     if _is_pdf(mime_type, path) and not extracted_text.strip():
-        return _recognize_pdf_scan(llm, path, caption=caption, original_name=original_name, settings=settings)
+        return _recognize_pdf_scan(llm, path, caption=caption, original_name=original_name, settings=settings, progress_callback=progress_callback)
 
-    return _recognize_text_document(
+    result = _recognize_text_document(
         llm,
         path,
         mime_type,
         extracted_text,
         caption=caption,
         original_name=original_name,
+        progress_callback=progress_callback,
     )
+    _emit(progress_callback, "done", "Реквизиты распознаны.")
+    return result
+
+def _emit(callback: Callable[[str, str], None] | None, stage: str, message: str) -> None:
+    """Invoke the optional progress callback, tolerating callback errors."""
+    if callback is None:
+        return
+    try:
+        callback(stage, message)
+    except Exception:
+        pass
+
 
 def _recognize_text_document(
     llm: Any,
@@ -60,12 +83,14 @@ def _recognize_text_document(
     original_name: str = "",
     source_provider: str = "",
     source_model: str = "",
+    progress_callback: Callable[[str, str], None] | None = None,
 ) -> RecognitionResult:
     if llm is None:
         raise RuntimeError("Hermes plugin LLM is unavailable")
     if PluginLlmTextInput is None:
         raise RuntimeError("Hermes plugin LLM input classes are unavailable")
 
+    _emit(progress_callback, "ai_parse", "AI разбирает реквизиты (контрагент, дата, сумма)...")
     inputs: list[Any] = [
         PluginLlmTextInput(
             text=(
@@ -110,8 +135,9 @@ def _recognize_image_document(
     caption: str = "",
     original_name: str = "",
     settings: Any,
+    progress_callback: Callable[[str, str], None] | None = None,
 ) -> RecognitionResult:
-    ocr_text, ocr_provider, ocr_model = _recognize_image_text(path, mime_type, settings)
+    ocr_text, ocr_provider, ocr_model = _recognize_image_text(path, mime_type, settings, progress_callback=progress_callback)
     return _recognize_text_document(
         llm,
         path,
@@ -121,9 +147,12 @@ def _recognize_image_document(
         original_name=original_name,
         source_provider=ocr_provider,
         source_model=ocr_model,
+        progress_callback=progress_callback,
     )
 
-def _recognize_image_text(path: Path, mime_type: str, settings: Any) -> tuple[str, str, str]:
+def _recognize_image_text(path: Path, mime_type: str, settings: Any,
+                          progress_callback: Callable[[str, str], None] | None = None) -> tuple[str, str, str]:
+    _emit(progress_callback, "ocr_image", "Распознаю изображение через Yandex Vision OCR...")
     yandex_error: Exception | None = None
     if getattr(settings, "yandex_vision_enabled", False):
         try:
@@ -154,7 +183,9 @@ def _recognize_pdf_scan(
     caption: str = "",
     original_name: str = "",
     settings: Any,
+    progress_callback: Callable[[str, str], None] | None = None,
 ) -> RecognitionResult:
+    _emit(progress_callback, "ocr_scan", "PDF похож на скан — готовлю страницу и распознаю через OCR...")
     with tempfile.TemporaryDirectory(prefix="hunttech-docs-pdf-") as temp_dir:
         rendered = _render_first_pdf_page(path, Path(temp_dir))
         return _recognize_image_document(
@@ -164,6 +195,7 @@ def _recognize_pdf_scan(
             caption=caption,
             original_name=original_name or path.name,
             settings=settings,
+            progress_callback=progress_callback,
         )
 
 def _render_first_pdf_page(path: Path, temp_dir: Path) -> Path:

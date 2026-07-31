@@ -26,6 +26,21 @@ from hunttech_bot_common.users.access import AccessManager
 from hunttech_bot_common.users.settings import UserSettingsManager
 from hunttech_bot_common.database import DatabasePool, PoolConfig, BaseRepository, UnitOfWork, DatabaseMigrator
 from hunttech_bot_common.recognition import recognize_document, RecognitionResult, DOCUMENT_SCHEMA, INSTRUCTIONS
+from hunttech_bot_common.email import (
+    ConnectionTestResult,
+    clear_email_config,
+    default_email_config,
+    format_email_config,
+    load_email_config,
+    save_email_config,
+    test_email_connections,
+    test_imap_connection,
+    test_smtp_connection,
+    validate_email,
+    validate_hostname,
+    validate_port,
+    validate_password,
+)
 
 __all__ = [
     "__version__",
