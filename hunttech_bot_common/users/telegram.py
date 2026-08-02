@@ -573,20 +573,22 @@ async def access_callback_handler(
     elif action == "check_status":
         status = access_manager.get_request_status(user_id)
         if status == "pending":
-            await callback.message.edit_text(PENDING_REQUEST_TEXT)
+            await callback.message.edit_text(PENDING_REQUEST_TEXT, parse_mode=ParseMode.MARKDOWN)
         elif status == "denied":
-            await callback.message.edit_text(DENIED_REQUEST_TEXT)
+            await callback.message.edit_text(DENIED_REQUEST_TEXT, parse_mode=ParseMode.MARKDOWN)
         else:
             # Already allowed or no request
             if access_manager.is_allowed(user_id):
                 await callback.message.edit_text(
                     "✅ **У вас уже есть доступ к боту.**\n\n"
-                    "Используйте `/start` чтобы начать."
+                    "Используйте `/start` чтобы начать.",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
             else:
                 await callback.message.edit_text(
                     "❌ **Запрос не найден.**\n\n"
-                    "Отправьте `/request_access` чтобы запросить доступ."
+                    "Отправьте `/request_access` чтобы запросить доступ.",
+                    parse_mode=ParseMode.MARKDOWN,
                 )
 
 
