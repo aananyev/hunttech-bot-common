@@ -28,6 +28,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable
 
+from aiogram.enums import ParseMode
+
 from hunttech_bot_common.telegram import CommandDef, CommandGroup, render_help_text
 
 logger = logging.getLogger(__name__)
@@ -166,7 +168,7 @@ async def start_access_gate(
             f"Используйте `/help` для списка команд.\n"
             f"Управление пользователями: `/user list`"
         )
-        await event.answer(text)
+        await event.answer(text, parse_mode=ParseMode.MARKDOWN)
         return "allowed"
 
     # Check if already allowed
@@ -176,7 +178,7 @@ async def start_access_gate(
             "Ваш доступ активен.\n"
             "Используйте `/help` для списка команд."
         )
-        await event.answer(text)
+        await event.answer(text, parse_mode=ParseMode.MARKDOWN)
         return "allowed"
 
     # Check pending request
@@ -193,7 +195,7 @@ async def start_access_gate(
                 ],
             ]
         )
-        await event.answer(PENDING_REQUEST_TEXT, reply_markup=kb)
+        await event.answer(PENDING_REQUEST_TEXT, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         return "pending"
 
     if status == "denied":
@@ -208,7 +210,7 @@ async def start_access_gate(
                 ],
             ]
         )
-        await event.answer(DENIED_REQUEST_TEXT, reply_markup=kb)
+        await event.answer(DENIED_REQUEST_TEXT, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         return "denied"
 
     # Not in any list — show access denied with request button
@@ -222,7 +224,7 @@ async def start_access_gate(
             ],
         ]
     )
-    await event.answer(ACCESS_DENIED_TEXT, reply_markup=kb)
+    await event.answer(ACCESS_DENIED_TEXT, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
     return "denied"
 
 
@@ -262,12 +264,12 @@ async def request_access_handler(
     )
 
     if result["is_already_allowed"]:
-        await event.answer(ACCESS_ALREADY_GRANTED_TEXT)
+        await event.answer(ACCESS_ALREADY_GRANTED_TEXT, parse_mode=ParseMode.MARKDOWN)
         return "already_allowed"
 
     if not result["is_new"]:
         # Already pending
-        await event.answer(PENDING_REQUEST_TEXT)
+        await event.answer(PENDING_REQUEST_TEXT, parse_mode=ParseMode.MARKDOWN)
         return "already_pending"
 
     # New request — notify admin
@@ -308,7 +310,7 @@ async def request_access_handler(
     except Exception as e:
         logger.error("Failed to notify admin about access request: %s", e)
 
-    await event.answer(ACCESS_REQUEST_SENT_TEXT)
+    await event.answer(ACCESS_REQUEST_SENT_TEXT, parse_mode=ParseMode.MARKDOWN)
     return "new_request"
 
 
@@ -340,13 +342,14 @@ async def admin_approval_callback(
     if not access_manager.is_admin(admin_id):
         await callback.message.edit_text(
             "❌ **Недостаточно прав.**\n"
-            "Только администратор может управлять доступом."
+            "Только администратор может управлять доступом.",
+            parse_mode=ParseMode.MARKDOWN,
         )
         return
 
     parts = callback.data.split(":")
     if len(parts) < 3:
-        await callback.message.edit_text("❌ **Некорректные данные.**")
+        await callback.message.edit_text("❌ **Некорректные данные.**", parse_mode=ParseMode.MARKDOWN)
         return
 
     action = parts[1]
@@ -360,7 +363,8 @@ async def admin_approval_callback(
             # User already existed (e.g., re-added)
             await callback.message.edit_text(
                 f"✅ **Пользователь уже имеет доступ.**\n"
-                f"🆔 `{target_user_id}`"
+                f"🆔 `{target_user_id}`",
+                parse_mode=ParseMode.MARKDOWN,
             )
             return
 
@@ -389,6 +393,7 @@ async def admin_approval_callback(
             await bot.send_message(
                 chat_id=target_user_id,
                 text=INVITATION_TEXT,
+                parse_mode=ParseMode.MARKDOWN,
             )
         except Exception:
             logger.warning(
@@ -409,7 +414,8 @@ async def admin_approval_callback(
 
         await callback.message.edit_text(
             f"❌ **Доступ отклонён** для `{target_user_id}` "
-            f"({display_name})."
+            f"({display_name}).",
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
@@ -475,7 +481,7 @@ async def user_list_handler(
         ])
 
     kb = InlineKeyboardMarkup(inline_keyboard=kb_buttons) if kb_buttons else None
-    await event.answer(text, reply_markup=kb)
+    await event.answer(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
 
 
 async def user_delete_callback(
@@ -513,6 +519,7 @@ async def user_delete_callback(
             await bot.send_message(
                 chat_id=target_user_id,
                 text=ACCESS_REVOKED_TEXT,
+                parse_mode=ParseMode.MARKDOWN,
             )
         except Exception:
             pass
@@ -520,11 +527,13 @@ async def user_delete_callback(
         await callback.message.edit_text(
             f"✅ **Пользователь `{target_user_id}` удалён.**\n"
             f"Уведомление отправлено.\n\n"
-            f"ℹ️ Обновите список: `/user list`"
+            f"ℹ️ Обновите список: `/user list`",
+            parse_mode=ParseMode.MARKDOWN,
         )
     else:
         await callback.message.edit_text(
-            f"❌ **Пользователь `{target_user_id}` не найден.**"
+            f"❌ **Пользователь `{target_user_id}` не найден.**",
+            parse_mode=ParseMode.MARKDOWN,
         )
 
 
