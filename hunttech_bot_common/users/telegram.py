@@ -140,6 +140,7 @@ async def start_access_gate(
     bot: Any,
     commands: list[CommandDef] | None = None,
     welcome_text: str | None = None,
+    parse_mode: str | None = ParseMode.MARKDOWN,
 ) -> Any:
     """Handle /start command with access gate.
 
@@ -150,6 +151,8 @@ async def start_access_gate(
         bot: aiogram Bot instance.
         commands: Full command list for menu sync.
         welcome_text: Custom welcome text for allowed users.
+        parse_mode: Parse mode for welcome_text (default Markdown,
+            pass None for plain text — единый формат HuntTech).
 
     Returns:
         "allowed", "denied", or "pending" based on user status.
@@ -168,7 +171,7 @@ async def start_access_gate(
             f"Используйте `/help` для списка команд.\n"
             f"Управление пользователями: `/user list`"
         )
-        await event.answer(text, parse_mode=ParseMode.MARKDOWN)
+        await event.answer(text, parse_mode=parse_mode)
         return "allowed"
 
     # Check if already allowed
@@ -178,7 +181,7 @@ async def start_access_gate(
             "Ваш доступ активен.\n"
             "Используйте `/help` для списка команд."
         )
-        await event.answer(text, parse_mode=ParseMode.MARKDOWN)
+        await event.answer(text, parse_mode=parse_mode)
         return "allowed"
 
     # Check pending request
