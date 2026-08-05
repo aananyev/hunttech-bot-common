@@ -90,6 +90,29 @@ General utilities.
 - `chunk_list` - Split list into chunks
 - `format_datetime` - Format datetime objects
 
+## hunttech_bot_common.services.rates
+
+Standard candidate rate calculation (per owner-approved `/rates` algorithm
+moved from `hunttech_short_vavancy_bot`). Single source of truth — bots
+call `calculate_candidate_rate` instead of duplicating SQL/arithmetic.
+
+- `calculate_candidate_rate(db, user_rate, empl="")` - Full calculation:
+  lookup in `HUNTTECH_OUTSTAFFING_RATES` (exact `rate` match, then nearest
+  lower, active rows only `delete_ts IS NULL`) → hourly = monthly ÷ 164,
+  rounded DOWN to nearest 100 rub → employment pick (ГПХ/ИП/ГПХ или ИП) →
+  ready-to-send `report` (format «Вознаграждение», channel template
+  t.me/hunttech_shortproject/46) and `rate_val` for draft substitution.
+  Errors: `{"error": "no_db" | "not_found" | "db_error", "detail": str}`.
+  Requires a DB object with `async with db.acquire() as conn` (DatabasePool).
+- `lookup_outstaffing_rate(conn, user_rate)` - Lookup only (raw row dict or None)
+- `hourly_from_monthly(monthly)` - Monthly → hourly: `(x // 164 // 100) * 100`
+- `pick_employment_rates(empl, hourly_tk, hourly_ip)` - `want_tk/want_ip/rate_val`
+- `build_candidate_rates_report(...)` - Report text builder
+- Constants: `OUTSTAFFING_RATES_TABLE`, `HOURLY_MONTH_HOURS=164`,
+  `HOURLY_ROUND_STEP=100`, `EMPLOYMENT_GPH/EMPLOYMENT_IP/EMPLOYMENT_BOTH`
+
+Read-only: never writes to the database.
+
 ## hunttech_bot_common.users
 
 User management module — per-bot access control, settings, and Telegram UI.

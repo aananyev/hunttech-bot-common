@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.0 (2026-08-05)
+
+### Added
+- **`services.rates` — стандартный расчёт почасовых ставок кандидатов**
+  (алгоритм «Рейты по аутстафу», перенесён из `hunttech_short_vavancy_bot`
+  `/rates`, одобрен владельцем):
+  - `calculate_candidate_rate(db, user_rate, empl="")` — единая точка
+    вызова для всех ботов: точное совпадение `rate` в
+    `HUNTTECH_OUTSTAFFING_RATES` → ближайшая меньшая (только активные
+    строки, `delete_ts IS NULL`); часовая = зарплата ÷ 164, округление
+    вниз до 100 руб.; выбор по оформлению ГПХ/ИП/«ГПХ или ИП»; отчёт
+    в формате «Вознаграждение» + `rate_val` для подстановки в черновик;
+  - `lookup_outstaffing_rate`, `hourly_from_monthly`,
+    `pick_employment_rates`, `build_candidate_rates_report`;
+  - константы `OUTSTAFFING_RATES_TABLE`, `HOURLY_MONTH_HOURS=164`,
+    `HOURLY_ROUND_STEP=100`;
+  - read-only: в БД ничего не пишется;
+- Документация: раздел «services.rates» в `docs/README.md`,
+  `MODULE_CATALOG.md`, `README.md`; стандарт в `HUNTECH_BOT_STANDARD.md`
+  (§7.4) — боты обязаны вызывать `calculate_candidate_rate`;
+- Тесты `tests/test_rates.py` (21 тест: округление, оформление, отчёт,
+  lookup exact/nearest_lower/not_found, полный флоу, ошибки).
+
 ## 0.2.0 (2026-07-15)
 
 ### Added

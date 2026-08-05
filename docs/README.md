@@ -39,9 +39,52 @@ pip install -e /path/to/hunttech-bot-common
 | `telegram` | Telegram-утилиты (escape_html, CommandDef, help) |
 | `users` | **Управление пользователями (ключевой модуль)** |
 | `utils` | Общие утилиты (async_retry, chunk_list, format_datetime) |
-| `services` | Сервисы (db_config_service) |
+| `services` | Сервисы: db_config_service, db_setup, **rates (расчёт ставок)** |
 | `email` | **Email: конфигурация, проверка SMTP/IMAP, валидация** |
 | `exceptions` | Иерархия исключений |
+
+---
+
+## `services.rates` — Расчёт ставок (стандарт HuntTech)
+
+**ЕДИНСТВЕННЫЙ источник расчёта почасовых ставок кандидатов.** Алгоритм
+перенесён из `hunttech_short_vavancy_bot` (команда `/rates`, одобрен
+владельцем). Все боты вызывают `calculate_candidate_rate` из библиотеки,
+а не держат свои копии SQL/арифметики.
+
+```python
+from hunttech_bot_common.services.rates import calculate_candidate_rate
+
+result = await calculate_candidate_rate(app.db, 2500, empl="ГПХ")
+if "error" in result:
+    # "no_db" | "not_found" | "db_error"
+    ...
+report = result["report"]       # готовый текст отчёта «Вознаграждение»
+rate_val = result["rate_val"]   # «500» или «500 / 600» для подстановки
+```
+
+Алгоритм:
+
+1. Вход — ставка заказчика (руб/час, число).
+2. Справочник `HUNTTECH_OUTSTAFFING_RATES`: точное совпадение `rate`
+   (только активные строки, `delete_ts IS NULL`) → иначе ближайшая
+   меньшая ставка (`ORDER BY rate DESC LIMIT 1`).
+3. Из строки: `max_salary` (зарплата по ТК) и `max_ie_salary` (выплата ИП).
+4. Оформление вакансии: «ГПХ» → по ТК, «ИП» → по ИП, «ГПХ или ИП»
+   (или не указано) → обе.
+5. Часовая ставка = зарплата ÷ 164, округление **вниз** до ближайших 100 руб.
+6. Отчёт в формате «Вознаграждение» (шаблон канала
+   t.me/hunttech_shortproject/46) — «на руки» для ГПХ, пометка про налоги для ИП.
+
+В базу ничего не пишется — только чтение справочника.
+
+Другие функции: `hourly_from_monthly`, `lookup_outstaffing_rate(conn, rate)`,
+`pick_employment_rates(empl, hourly_tk, hourly_ip)`,
+`build_candidate_rates_report(...)`. Константы: `OUTSTAFFING_RATES_TABLE`,
+`HOURLY_MONTH_HOURS=164`, `HOURLY_ROUND_STEP=100`.
+
+**Требование:** объект БД с `async with db.acquire() as conn`
+(`hunttech_bot_common.database.DatabasePool`); `conn` — asyncpg-совместимый.
 
 ---
 

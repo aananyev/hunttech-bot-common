@@ -281,7 +281,32 @@ CUBA читает данные бота:
 - `RECEIVED`, `RECOGNIZED`, `WAITING_CONFIRMATION`, `CONFIRMED`
 - `SENT`, `ERROR`, `BAD_SCAN`, `SKIPPED`
 
-### 7.4. Экран HRM для ботов (будущее)
+### 7.4. Расчёт ставок кандидата (/rates) — стандарт
+
+**Все HuntTech-боты рассчитывают почасовые ставки кандидатов ТОЛЬКО через
+`hunttech_bot_common.services.rates.calculate_candidate_rate`** — единый
+алгоритм «Рейты по аутстафу» (перенесён из `hunttech_short_vavancy_bot`,
+одобрен владельцем). Свои копии SQL/арифметики в ботах запрещены.
+
+```python
+from hunttech_bot_common.services.rates import calculate_candidate_rate
+
+result = await calculate_candidate_rate(app.db, 2500, empl="ГПХ")
+if "error" in result:
+    # no_db / not_found / db_error
+    ...
+report, rate_val = result["report"], result["rate_val"]
+```
+
+Алгоритм: точное совпадение `rate` в `HUNTTECH_OUTSTAFFING_RATES`
+(активные строки, `delete_ts IS NULL`) → иначе ближайшая меньшая ставка;
+часовая = зарплата ÷ 164, округление ВНИЗ до 100 руб.; «ГПХ» → по ТК,
+«ИП» → по ИП, «ГПХ или ИП» → обе. Отчёт — формат «Вознаграждение»
+(шаблон канала t.me/hunttech_shortproject/46). Запись в БД не выполняется.
+
+Полное описание — `docs/README.md` → раздел «services.rates».
+
+### 7.5. Экран HRM для ботов (будущее)
 
 Каждый бот может иметь экран в HRM HuntTech:
 - Входящие

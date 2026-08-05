@@ -12,6 +12,7 @@ Shared library for HuntTech Telegram bots providing common utilities, AI client 
 - [x] База данных (asyncpg pool, repository, unit of work, миграции)
 - [x] Управление пользователями (AccessManager, middleware, Telegram UI)
 - [x] **Email (конфигурация, SMTP/IMAP проверка, валидация)**
+- [x] **Расчёт ставок (rates) — стандартный алгоритм «Рейты по аутстафу»**
 
 Полный стандарт создания ботов HuntTech: [`HUNTECH_BOT_STANDARD.md`](HUNTECH_BOT_STANDARD.md)
 
@@ -64,6 +65,8 @@ print(response.content)
 - **utils** - Async retry, chunking, datetime formatting
 - **exceptions** - Common exception hierarchy
 - **users** - User management module
+- **services.rates** - Расчёт почасовых ставок кандидатов по ставке заказчика
+  (справочник HUNTTECH_OUTSTAFFING_RATES, ÷164, округление вниз до 100 руб.)
 
 ## Development
 
