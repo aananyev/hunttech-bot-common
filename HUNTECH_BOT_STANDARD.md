@@ -232,6 +232,53 @@ if str(update.effective_user.id) not in settings.allowed_user_id:
 
 Формат через `format_help_message()`.
 
+### 5.5. Приветствие: логотип над приветствием (обязательно для всех ботов)
+
+**При `/start` и при каждом старте бота логотип компании HuntTech
+отправляется ПЕРВЫМ сообщением — над приветствием** (эталон:
+`@hunttech_short_vacancy_bot`, одобрено владельцем).
+
+```python
+from hunttech_bot_common.media import send_logo
+
+await send_logo(message.bot, message.from_user.id)   # /start (aiogram)
+await send_logo(app.bot, admin_id)                    # старт бота
+```
+
+- `send_logo(bot, chat_id) -> bool` — не роняет поток: при отсутствии
+  файла/ошибке возвращает False, приветствие продолжается.
+- Логотип — `hunttech_bot_common/assets/hunttech_logo.png`.
+- Поддерживает aiogram (`FSInputFile`) и python-telegram-bot
+  (`telegram.InputFile`) — фреймворк определяется автоматически.
+
+### 5.6. Сводка изменений при перезапуске (обязательно для всех ботов)
+
+**После приветствия при каждом перезапуске бот отправляет администратору
+краткую сводку того, что добавлено/исправлено с момента последнего
+запуска** (эталон: `@hunttech_open_close_vacancy_bot`, одобрено владельцем).
+Git-подход: маркер `startup_state.json` хранит SHA прошлого запуска.
+
+```python
+from hunttech_bot_common.services.startup import send_startup_changelog
+
+await send_startup_changelog(
+    bot, app.master_admin_id,
+    repo_dir=Path(__file__).resolve().parent,   # git-репозиторий бота
+    state_path=DATA_DIR / "startup_state.json", # gitignored
+)
+```
+
+Правила:
+- маркера нет (первый запуск) — «📦 Последние изменения бота:»
+  (последние 8 коммитов);
+- SHA изменился — «📦 Изменения с прошлого запуска:» (коммиты от
+  прошлого SHA до HEAD, до 10 пунктов; при превышении «… и ещё
+  несколько коммитов»);
+- SHA тот же — молча (однократность);
+- git недоступен — тихий пропуск; текст — plain text (`parse_mode=None`);
+- вызывается ПОСЛЕ приветствия (логотип → приветствие → сводка);
+- маркер `startup_state.json` — в `.gitignore` бота.
+
 ---
 
 ## 6. Архитектура бота

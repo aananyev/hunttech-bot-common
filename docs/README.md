@@ -39,7 +39,8 @@ pip install -e /path/to/hunttech-bot-common
 | `telegram` | Telegram-утилиты (escape_html, CommandDef, help) |
 | `users` | **Управление пользователями (ключевой модуль)** |
 | `utils` | Общие утилиты (async_retry, chunk_list, format_datetime) |
-| `services` | Сервисы: db_config_service, db_setup, **rates (расчёт ставок)** |
+| `services` | Сервисы: db_config_service, db_setup, **rates (расчёт ставок)**, **startup (changelog при старте)** |
+| `media` | **Логотип HuntTech (send_logo — над приветствием)** |
 | `email` | **Email: конфигурация, проверка SMTP/IMAP, валидация** |
 | `exceptions` | Иерархия исключений |
 
@@ -85,6 +86,46 @@ rate_val = result["rate_val"]   # «500» или «500 / 600» для подст
 
 **Требование:** объект БД с `async with db.acquire() as conn`
 (`hunttech_bot_common.database.DatabasePool`); `conn` — asyncpg-совместимый.
+
+---
+
+## `media` — Логотип HuntTech (стандарт HuntTech)
+
+При `/start` и при каждом старте бота логотип компании отправляется
+ПЕРВЫМ сообщением — над приветствием (эталон: `@hunttech_short_vacancy_bot`).
+
+```python
+from hunttech_bot_common.media import send_logo
+
+await send_logo(bot, chat_id)   # True/False, не роняет поток
+```
+
+Логотип — `hunttech_bot_common/assets/hunttech_logo.png`. Поддерживает
+aiogram (`FSInputFile`) и python-telegram-bot (`telegram.InputFile`).
+
+---
+
+## `services.startup` — Сводка изменений при перезапуске (стандарт HuntTech)
+
+**После приветствия при каждом перезапуске бот отправляет администратору
+сводку того, что добавлено/исправлено с момента последнего запуска**
+(эталон: `@hunttech_open_close_vacancy_bot`). Git-подход: маркер
+`startup_state.json` хранит SHA прошлого запуска.
+
+```python
+from hunttech_bot_common.services.startup import send_startup_changelog
+
+await send_startup_changelog(bot, admin_id, repo_dir=REPO, state_path=DATA_DIR / "startup_state.json")
+```
+
+- первый запуск → «📦 Последние изменения бота:» (8 коммитов);
+- SHA изменился → «📦 Изменения с прошлого запуска:» (до 10 пунктов);
+- SHA тот же → молча; git недоступен → тихий пропуск;
+- plain text (`parse_mode=None`); работает с aiogram и PTB.
+
+Функции: `build_startup_changelog` (чистая логика), `git_sha`,
+`git_subjects_since`, `git_recent_subjects`, `load_startup_marker`,
+`save_startup_marker`, `format_startup_changelog`.
 
 ---
 

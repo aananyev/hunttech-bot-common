@@ -113,6 +113,31 @@ call `calculate_candidate_rate` instead of duplicating SQL/arithmetic.
 
 Read-only: never writes to the database.
 
+## hunttech_bot_common.media
+
+HuntTech logo for greetings (standard).
+
+- `send_logo(bot, chat_id)` - Send company logo as the FIRST message above
+  the welcome (/start and bot startup). Returns bool, never raises on
+  missing file/errors. Works with aiogram (FSInputFile) and
+  python-telegram-bot (telegram.InputFile).
+- `LOGO_PATH` - Path to `assets/hunttech_logo.png`.
+
+## hunttech_bot_common.services.startup
+
+Startup changelog — summary of what was added/fixed since the last restart
+(git-based, standard; reference bot @hunttech_open_close_vacancy_bot).
+
+- `send_startup_changelog(bot, chat_id, repo_dir, state_path)` - Build and
+  deliver the summary after the welcome (plain text, parse_mode=None).
+  First run → «📦 Последние изменения бота:» (8 commits); SHA changed →
+  «📦 Изменения с прошлого запуска:» (up to 10 items); same SHA → silent.
+  Saves the startup marker. Works with aiogram and PTB.
+- `build_startup_changelog(repo_dir, state_path)` - Pure logic (no Telegram)
+- `git_sha`, `git_subjects_since`, `git_recent_subjects` - Git helpers
+- `load_startup_marker`, `save_startup_marker` - Marker persistence
+- `format_startup_changelog(header, items)` - Text builder
+
 ## hunttech_bot_common.users
 
 User management module — per-bot access control, settings, and Telegram UI.

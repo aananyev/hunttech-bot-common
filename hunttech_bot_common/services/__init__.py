@@ -19,6 +19,20 @@ from hunttech_bot_common.services.rates import (
     lookup_outstaffing_rate,
     pick_employment_rates,
 )
+from hunttech_bot_common.services.startup import (
+    DEFAULT_FIRST_RUN_ITEMS,
+    DEFAULT_MAX_ITEMS,
+    HEADER_CHANGED,
+    HEADER_FIRST_RUN,
+    build_startup_changelog,
+    format_startup_changelog,
+    git_recent_subjects,
+    git_sha,
+    git_subjects_since,
+    load_startup_marker,
+    save_startup_marker,
+    send_startup_changelog,
+)
 
 __all__ = [
     "DbConfigService",
@@ -39,4 +53,17 @@ __all__ = [
     "build_candidate_rates_report",
     "lookup_outstaffing_rate",
     "calculate_candidate_rate",
+    # Сводка изменений при старте (стандарт HuntTech)
+    "DEFAULT_MAX_ITEMS",
+    "DEFAULT_FIRST_RUN_ITEMS",
+    "HEADER_FIRST_RUN",
+    "HEADER_CHANGED",
+    "git_sha",
+    "git_subjects_since",
+    "git_recent_subjects",
+    "load_startup_marker",
+    "save_startup_marker",
+    "build_startup_changelog",
+    "format_startup_changelog",
+    "send_startup_changelog",
 ]

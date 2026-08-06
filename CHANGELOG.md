@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0 (2026-08-06)
+
+### Added
+- **`media` — логотип HuntTech над приветствием** (стандарт, эталон
+  `@hunttech_short_vacancy_bot`): `send_logo(bot, chat_id) -> bool`
+  — первое сообщение при `/start` и при старте бота; не роняет поток;
+  поддерживает aiogram (`FSInputFile`) и PTB (`telegram.InputFile`);
+  логотип — `assets/hunttech_logo.png`;
+- **`services.startup` — сводка изменений при перезапуске** (стандарт,
+  эталон `@hunttech_open_close_vacancy_bot`): git-подход, маркер
+  `startup_state.json` хранит SHA прошлого запуска;
+  `send_startup_changelog(bot, chat_id, repo_dir, state_path)` — первый
+  запуск → «📦 Последние изменения бота» (8 коммитов), SHA изменился →
+  «📦 Изменения с прошлого запуска» (до 10 пунктов), SHA тот же → молча;
+  plain text (parse_mode=None); aiogram + PTB;
+  `build_startup_changelog`, `git_sha`, `git_subjects_since`,
+  `git_recent_subjects`, `load_startup_marker`, `save_startup_marker`,
+  `format_startup_changelog`;
+- Документация: HUNTECH_BOT_STANDARD.md §5.5 (логотип) и §5.6 (сводка
+  изменений) — обязательны для ВСЕХ ботов; docs/README.md, README.md,
+  MODULE_CATALOG.md;
+- Тесты: tests/test_startup.py (15) + tests/test_media.py (4) — всего 241.
+
 ## 0.4.0 (2026-08-05)
 
 ### Added
