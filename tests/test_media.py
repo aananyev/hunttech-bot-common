@@ -23,6 +23,23 @@ class TestSendLogo:
         photo = bot.send_photo.await_args.kwargs["photo"]
         assert photo.path.endswith("hunttech_logo.png")
 
+    def test_send_success_ptb_bot(self) -> None:
+        """PTB-бот (python-telegram-bot) получает telegram.InputFile.
+
+        Регресс-тест бага: импорт-проба выбирала aiogram FSInputFile и для
+        PTB-бота (в venv Hermes установлены ОБА фреймворка) →
+        `FSInputFile.read() missing 'bot'`.
+        """
+        from telegram import Bot as PTBBot
+        from telegram import InputFile
+
+        bot = PTBBot(token="1:test:token")
+        with patch.object(PTBBot, "send_photo", AsyncMock()):
+            ok = asyncio.run(send_logo(bot, 123))
+        assert ok is True
+        photo = PTBBot.send_photo.await_args.kwargs["photo"]
+        assert isinstance(photo, InputFile)
+
     def test_send_failure_returns_false(self) -> None:
         bot = AsyncMock()
         bot.send_photo = AsyncMock(side_effect=RuntimeError("boom"))

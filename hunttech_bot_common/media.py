@@ -23,6 +23,21 @@ logger = logging.getLogger(__name__)
 LOGO_PATH = Path(__file__).resolve().parent / "assets" / "hunttech_logo.png"
 
 
+def _is_ptb_bot(bot: Any) -> bool:
+    """PTB-бот (python-telegram-bot)? Фреймворк определяем ПО ТИПУ объекта.
+
+    Импорт-проба не годится: в venv Hermes установлены и aiogram, и PTB —
+    по доступности aiogram всегда «побеждает», и PTB-боту уходит
+    aiogram-объект FSInputFile → `FSInputFile.read() missing 'bot'`
+    (реальный баг docs-бота, 2026-08-06).
+    """
+    try:
+        from telegram import Bot as PTBBot
+    except ImportError:
+        return False
+    return isinstance(bot, PTBBot)
+
+
 async def send_logo(bot: Any, chat_id: int) -> bool:
     """Отправить фото-логотип HuntTech над приветствием.
 
@@ -38,14 +53,14 @@ async def send_logo(bot: Any, chat_id: int) -> bool:
         if not LOGO_PATH.exists():
             logger.warning("Логотип не найден: %s", LOGO_PATH)
             return False
-        try:
-            from aiogram.types import FSInputFile
-
-            photo = FSInputFile(str(LOGO_PATH))
-        except ImportError:
+        if _is_ptb_bot(bot):
             from telegram import InputFile  # python-telegram-bot
 
             photo = InputFile(LOGO_PATH)
+        else:
+            from aiogram.types import FSInputFile
+
+            photo = FSInputFile(str(LOGO_PATH))
         await bot.send_photo(chat_id=chat_id, photo=photo)
         return True
     except Exception as e:  # noqa: BLE001
