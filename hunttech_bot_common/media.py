@@ -38,6 +38,17 @@ def _is_ptb_bot(bot: Any) -> bool:
     return isinstance(bot, PTBBot)
 
 
+def _photo_for_bot(bot: Any) -> Any:
+    """Фото-объект логотипа под фреймворк бота (InputFile/FSInputFile)."""
+    if _is_ptb_bot(bot):
+        from telegram import InputFile  # python-telegram-bot
+
+        return InputFile(LOGO_PATH)
+    from aiogram.types import FSInputFile
+
+    return FSInputFile(str(LOGO_PATH))
+
+
 async def send_logo(bot: Any, chat_id: int) -> bool:
     """Отправить фото-логотип HuntTech над приветствием.
 
@@ -53,15 +64,7 @@ async def send_logo(bot: Any, chat_id: int) -> bool:
         if not LOGO_PATH.exists():
             logger.warning("Логотип не найден: %s", LOGO_PATH)
             return False
-        if _is_ptb_bot(bot):
-            from telegram import InputFile  # python-telegram-bot
-
-            photo = InputFile(LOGO_PATH)
-        else:
-            from aiogram.types import FSInputFile
-
-            photo = FSInputFile(str(LOGO_PATH))
-        await bot.send_photo(chat_id=chat_id, photo=photo)
+        await bot.send_photo(chat_id=chat_id, photo=_photo_for_bot(bot))
         return True
     except Exception as e:  # noqa: BLE001
         logger.warning("Не удалось отправить логотип %s: %s", chat_id, e)

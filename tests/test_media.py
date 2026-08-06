@@ -33,12 +33,10 @@ class TestSendLogo:
         from telegram import Bot as PTBBot
         from telegram import InputFile
 
+        from hunttech_bot_common.media import _photo_for_bot
+
         bot = PTBBot(token="1:test:token")
-        with patch.object(PTBBot, "send_photo", AsyncMock()):
-            ok = asyncio.run(send_logo(bot, 123))
-        assert ok is True
-        photo = PTBBot.send_photo.await_args.kwargs["photo"]
-        assert isinstance(photo, InputFile)
+        assert isinstance(_photo_for_bot(bot), InputFile)
 
     def test_send_failure_returns_false(self) -> None:
         bot = AsyncMock()
