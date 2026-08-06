@@ -114,6 +114,7 @@ class AIClient:
         temperature: float | None = None,
         max_tokens: int | None = None,
         timeout: float | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> AIResponse:
         """Send a completion request to the AI provider.
 
@@ -127,6 +128,9 @@ class AIClient:
             max_tokens: Optional max tokens override.
             timeout: Optional per-call timeout override (seconds).
                 Falls back to default_timeout from constructor when None.
+            extra_body: Optional extra JSON body fields merged into the request
+                (e.g. {"thinking": {"type": "disabled"}} for DeepSeek reasoning
+                models, 08.2026).
 
         Returns:
             An AIResponse with content, duration_ms, and usage.
@@ -151,6 +155,7 @@ class AIClient:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     timeout=timeout,
+                    extra_body=extra_body,
                 )
             except (AIConnectionError, AIRateLimitError, AITimeoutError) as exc:
                 last_exception = exc
@@ -170,6 +175,7 @@ class AIClient:
         temperature: float | None = None,
         max_tokens: int | None = None,
         timeout: float | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> AIResponse:
         headers: dict[str, str] = {
             "Content-Type": "application/json",
@@ -192,6 +198,8 @@ class AIClient:
             body["temperature"] = temperature
         if max_tokens is not None:
             body["max_tokens"] = max_tokens
+        if extra_body:
+            body.update(extra_body)
 
         request_timeout = self.default_timeout if timeout is None else timeout
         start_time = time.monotonic()
@@ -265,9 +273,10 @@ class MockAIClient:
         temperature: float | None = None,
         max_tokens: int | None = None,
         timeout: float | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> AIResponse:
         """Return a mock response immediately."""
-        _ = system_prompt, user_prompt, temperature, max_tokens, timeout  # mark as used
+        _ = system_prompt, user_prompt, temperature, max_tokens, timeout, extra_body  # mark as used
         content = self.response_text
         if response_schema is not None:
             try:
