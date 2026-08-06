@@ -49,6 +49,38 @@ DEFAULT_FIRST_RUN_ITEMS = 8
 HEADER_FIRST_RUN = "📦 Последние изменения бота:"
 HEADER_CHANGED = "📦 Изменения с прошлого запуска:"
 
+
+def bot_version(repo_dir: str | Path) -> str:
+    """Версия бота для приветствий и сводок (стандарт HuntTech).
+
+    Приоритет:
+    1. ``version = "X.Y.Z"`` из pyproject.toml корня репозитория;
+    2. короткий SHA последнего коммита (``git rev-parse --short HEAD``);
+    3. "unknown" — если ничего не доступно.
+    """
+    try:
+        pyproject = Path(repo_dir) / "pyproject.toml"
+        if pyproject.exists():
+            import re as _re
+
+            m = _re.search(r'^version\s*=\s*["\']([^"\']+)["\']', pyproject.read_text(encoding="utf-8"), _re.M)
+            if m:
+                return m.group(1)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("changelog: pyproject version не прочитан: %s", e)
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=10,
+            cwd=str(repo_dir),
+        )
+        sha = (out.stdout or "").strip()
+        if sha:
+            return sha
+    except Exception as e:  # noqa: BLE001
+        logger.warning("changelog: git short sha failed: %s", e)
+    return "unknown"
+
 # ── Git-хелперы ────────────────────────────────────────────────────
 
 
@@ -186,10 +218,15 @@ async def send_startup_changelog(
     changelog = build_startup_changelog(repo_dir, state_path, max_items, first_run_items)
     cur = git_sha(repo_dir)
     if changelog:
-        text = format_startup_changelog(changelog["header"], changelog["items"], max_items)
+        # Версия бота — первой строкой (стандарт HuntTech: «во все боты
+        # информацию о версиях», требование владельца 2026-08).
+        version = bot_version(repo_dir)
+        body = format_startup_changelog(changelog["header"], changelog["items"], max_items)
+        text = f"🤖 Версия бота: {version}\n\n{body}"
         try:
             await bot.send_message(chat_id=chat_id, text=text, parse_mode=None)
-            logger.info("changelog: отправлено %d пунктов админу %s", len(changelog["items"]), chat_id)
+            logger.info("changelog: отправлено %d пунктов админу %s (версия %s)",
+                        len(changelog["items"]), chat_id, version)
         except Exception as e:  # noqa: BLE001
             logger.warning("changelog: отправка не удалась: %s", e)
             return False

@@ -8,12 +8,14 @@ SHA изменился → «Изменения с прошлого запуск
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
 import pytest
 
 from hunttech_bot_common.services.startup import (
+    bot_version,
     build_startup_changelog,
     format_startup_changelog,
     git_recent_subjects,
@@ -127,6 +129,19 @@ class TestFormat:
         assert "… и ещё несколько коммитов" in text
 
 
+class TestVersion:
+    def test_pyproject_version_priority(self, tmp_path: Path) -> None:
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\nversion = "2.3.4"\n', encoding="utf-8")
+        assert bot_version(tmp_path) == "2.3.4"
+
+    def test_git_short_sha_fallback(self, git_repo: Path) -> None:
+        version = bot_version(git_repo)  # у temp-репо нет pyproject
+        assert re.fullmatch(r"[0-9a-f]{7,}", version)
+
+    def test_unknown(self, tmp_path: Path) -> None:
+        assert bot_version(tmp_path / "nope") == "unknown"
+
+
 class TestSend:
     def test_send_and_save_marker(self, git_repo: Path, tmp_path: Path) -> None:
         import asyncio
@@ -144,7 +159,9 @@ class TestSend:
         assert ok is True
         assert sent[0][0] == 123
         assert sent[0][2] is None  # plain text
+        assert "🤖 Версия бота:" in sent[0][1]  # версия — первой строкой
         assert "📦 Последние изменения бота:" in sent[0][1]
+        assert "• " in sent[0][1]
         # маркер сохранён → повторный запуск молчит
         ok2 = asyncio.run(send_startup_changelog(FakeBot(), 123, git_repo, state))
         assert ok2 is False
