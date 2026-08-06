@@ -39,11 +39,16 @@ def _is_ptb_bot(bot: Any) -> bool:
 
 
 def _photo_for_bot(bot: Any) -> Any:
-    """Фото-объект логотипа под фреймворк бота (InputFile/FSInputFile)."""
+    """Фото-объект логотипа под фреймворк бота (InputFile/FSInputFile).
+
+    Питфолл PTB v22: InputFile НЕ принимает pathlib.Path (только
+    IO[bytes]/bytes/str-as-содержимое) — `'PosixPath' object has no
+    attribute 'read'`. Читаем файл в bytes с именем.
+    """
     if _is_ptb_bot(bot):
         from telegram import InputFile  # python-telegram-bot
 
-        return InputFile(LOGO_PATH)
+        return InputFile(LOGO_PATH.read_bytes(), filename=LOGO_PATH.name)
     from aiogram.types import FSInputFile
 
     return FSInputFile(str(LOGO_PATH))

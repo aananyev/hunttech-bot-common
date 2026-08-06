@@ -33,10 +33,13 @@ class TestSendLogo:
         from telegram import Bot as PTBBot
         from telegram import InputFile
 
-        from hunttech_bot_common.media import _photo_for_bot
+        from hunttech_bot_common.media import LOGO_PATH, _photo_for_bot
 
         bot = PTBBot(token="1:test:token")
-        assert isinstance(_photo_for_bot(bot), InputFile)
+        photo = _photo_for_bot(bot)
+        assert isinstance(photo, InputFile)
+        # PTB v22: Path не принимается — файл читается в bytes
+        assert photo.input_file_content == LOGO_PATH.read_bytes()
 
     def test_send_failure_returns_false(self) -> None:
         bot = AsyncMock()
