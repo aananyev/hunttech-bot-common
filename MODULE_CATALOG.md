@@ -132,8 +132,8 @@ Startup changelog — summary of what was added/fixed since the last restart
   deliver the summary after the welcome (plain text, parse_mode=None).
   First run → «📦 Последние изменения бота:» (8 commits); SHA changed →
   «📦 Изменения с прошлого запуска:» (up to 10 items); same SHA → silent.
-  First line of the summary: «🤖 Версия бота: …» (bot_version).
-  Saves the startup marker. Works with aiogram and PTB.
+  Bot version is shown ONLY in the welcome (not duplicated in the summary —
+  owner requirement 2026-08). Saves the startup marker. Works with aiogram and PTB.
 - `bot_version(repo_dir)` - Version: pyproject.toml `version` → short git
   SHA → "unknown"
 - `build_startup_changelog(repo_dir, state_path)` - Pure logic (no Telegram)

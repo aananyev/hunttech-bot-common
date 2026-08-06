@@ -211,22 +211,20 @@ async def send_startup_changelog(
 ) -> bool:
     """Собрать и отправить сводку изменений админу (plain text, parse_mode=None).
 
-    Вызывать ПОСЛЕ приветствия (логотип → приветствие → сводка).
+    Вызывать ПОСЛЕ приветствия (логотип → приветствие → сводка). Версия
+    бота — только в приветствии (не дублируется в сводке; требование
+    владельца 2026-08: «2 раза версия — оставь первый вывод»).
     Сохраняет маркер текущего SHA. Возвращает True, если сводка отправлена;
     False — изменений нет / git недоступен / ошибка отправки.
     """
     changelog = build_startup_changelog(repo_dir, state_path, max_items, first_run_items)
     cur = git_sha(repo_dir)
     if changelog:
-        # Версия бота — первой строкой (стандарт HuntTech: «во все боты
-        # информацию о версиях», требование владельца 2026-08).
-        version = bot_version(repo_dir)
-        body = format_startup_changelog(changelog["header"], changelog["items"], max_items)
-        text = f"🤖 Версия бота: {version}\n\n{body}"
+        text = format_startup_changelog(changelog["header"], changelog["items"], max_items)
         try:
             await bot.send_message(chat_id=chat_id, text=text, parse_mode=None)
             logger.info("changelog: отправлено %d пунктов админу %s (версия %s)",
-                        len(changelog["items"]), chat_id, version)
+                        len(changelog["items"]), chat_id, bot_version(repo_dir))
         except Exception as e:  # noqa: BLE001
             logger.warning("changelog: отправка не удалась: %s", e)
             return False

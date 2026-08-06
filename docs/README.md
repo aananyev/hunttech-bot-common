@@ -122,8 +122,10 @@ await send_startup_changelog(bot, admin_id, repo_dir=REPO, state_path=DATA_DIR /
 - SHA изменился → «📦 Изменения с прошлого запуска:» (до 10 пунктов);
 - SHA тот же → молча; git недоступен → тихий пропуск;
 - plain text (`parse_mode=None`); работает с aiogram и PTB;
-- **первой строкой сводки — «🤖 Версия бота: …»** (`bot_version`:
-  `version` из pyproject.toml → короткий SHA коммита → unknown).
+- **версия бота — ТОЛЬКО в приветствии** (в сводке не дублируется;
+  требование владельца: «2 раза версия — оставь первый вывод»); для
+  приветствий: `bot_version` (`version` из pyproject.toml → короткий SHA
+  коммита → unknown).
 
 Функции: `build_startup_changelog` (чистая логика), `git_sha`,
 `git_subjects_since`, `git_recent_subjects`, `load_startup_marker`,

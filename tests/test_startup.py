@@ -159,7 +159,7 @@ class TestSend:
         assert ok is True
         assert sent[0][0] == 123
         assert sent[0][2] is None  # plain text
-        assert "🤖 Версия бота:" in sent[0][1]  # версия — первой строкой
+        assert "🤖 Версия бота:" not in sent[0][1]  # версия — только в приветствии, не дублируем
         assert "📦 Последние изменения бота:" in sent[0][1]
         assert "• " in sent[0][1]
         # маркер сохранён → повторный запуск молчит
