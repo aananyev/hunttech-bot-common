@@ -144,6 +144,14 @@ class CallbackAccessMiddleware:
         if am.is_admin(user_id) or am.is_allowed(user_id):
             return await handler(event, data)
 
+        # Access-request flow callbacks (access:*) MUST pass through from
+        # unauthorized users — otherwise the «📨 Запросить доступ» button
+        # after /start is dead and the admin never gets notified
+        # (real bug: @hunttech_short_vacancy_bot, 2026-08-07).
+        callback_data = getattr(event, "data", "") or ""
+        if callback_data.startswith("access:"):
+            return await handler(event, data)
+
         # Block callback from unauthorized user
         logger.info(
             "Blocked callback '%s' from unauthorized user %s",

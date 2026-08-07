@@ -30,7 +30,13 @@ from typing import Any, Callable
 
 from aiogram.enums import ParseMode
 
-from hunttech_bot_common.telegram import CommandDef, CommandGroup, render_help_text
+from hunttech_bot_common.telegram import (
+    CommandDef,
+    CommandGroup,
+    escape_html,
+    escape_md_simple,
+    render_help_text,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +161,9 @@ async def start_access_gate(
             pass None for plain text — единый формат HuntTech).
 
     Returns:
-        "allowed", "denied", or "pending" based on user status.
+        "allowed", "denied", "pending", or "requested" based on user status.
+        "requested" — unknown user: an access request was auto-created and
+        the admin notified (with «✅ Разрешить / ❌ Запретить» buttons).
     """
     from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -216,19 +224,20 @@ async def start_access_gate(
         await event.answer(DENIED_REQUEST_TEXT, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
         return "denied"
 
-    # Not in any list — show access denied with request button
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="📨 Запросить доступ",
-                    callback_data="access:request",
-                ),
-            ],
-        ]
+    # Not in any list — automatically create an access request and notify
+    # the admin (owner's algorithm: user presses /start → admin gets
+    # «✅ Разрешить / ❌ Запретить» buttons). request_access_handler answers
+    # the user with «✅ Запрос отправлен!» and notifies the admin.
+    from hunttech_bot_common.users.telegram import request_access_handler
+
+    await request_access_handler(
+        event,
+        user_id,
+        access_manager,
+        bot,
+        bot_name=access_manager.bot_name,
     )
-    await event.answer(ACCESS_DENIED_TEXT, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
-    return "denied"
+    return "requested"
 
 
 # ── Request access handler ─────────────────────────────────────
@@ -275,17 +284,21 @@ async def request_access_handler(
         await event.answer(PENDING_REQUEST_TEXT, parse_mode=ParseMode.MARKDOWN)
         return "already_pending"
 
-    # New request — notify admin
+    # New request — notify admin.
+    # Текст — HTML (не Markdown): username/имя пользователя содержат
+    # спецсимволы (`_`, `*`, …), которые ломают Markdown при глобальном
+    # parse_mode бота (реальный баг: @hunttech_short_vacancy_bot,
+    # «can't parse entities» на @pavel_korab, 2026-08-07).
     user_info = result["user_info"]
     display_name = user_info.get("full_name") or user_info.get("username") or f"User#{user_id}"
-    mention = f'<a href="tg://user?id={user_id}">{display_name}</a>'
+    mention = f'<a href="tg://user?id={user_id}">{escape_html(display_name)}</a>'
 
     notif_text = admin_notification_text or (
-        f"🔔 **Новый запрос доступа** к боту *{bot_name}*\n\n"
+        f"🔔 <b>Новый запрос доступа</b> к боту <i>{escape_html(bot_name)}</i>\n\n"
         f"👤 Пользователь: {mention}\n"
-        f"🆔 ID: `{user_id}`\n"
-        f"📝 Username: @{user.username or '—'}\n"
-        f"🌐 Язык: {user.language_code or '—'}\n\n"
+        f"🆔 ID: <code>{user_id}</code>\n"
+        f"📝 Username: @{escape_html(user.username or '—')}\n"
+        f"🌐 Язык: {escape_html(user.language_code or '—')}\n\n"
         "Что хотите сделать?"
     )
 
@@ -309,6 +322,7 @@ async def request_access_handler(
             chat_id=access_manager.master_admin_id,
             text=notif_text,
             reply_markup=kb,
+            parse_mode=ParseMode.HTML,
         )
     except Exception as e:
         logger.error("Failed to notify admin about access request: %s", e)
@@ -324,6 +338,8 @@ async def admin_approval_callback(
     access_manager: Any,
     bot: Any,
     bot_name: str = "Bot",
+    welcome_text: str | None = None,
+    welcome_parse_mode: str | None = None,
 ) -> None:
     """Handle admin approval/denial callback.
 
@@ -334,6 +350,11 @@ async def admin_approval_callback(
         access_manager: AccessManager instance.
         bot: aiogram Bot instance.
         bot_name: Bot name for user notification.
+        welcome_text: Optional bot welcome text sent to the user right after
+            the grant (contains /help hint). Pass None to keep the default
+            invitation message only.
+        welcome_parse_mode: Parse mode for welcome_text (e.g. None for plain
+            text — стандарт HuntTech 08.2026). Ignored if welcome_text is None.
     """
     from aiogram.enums import ParseMode
 
@@ -381,7 +402,7 @@ async def admin_approval_callback(
         access_manager.approve_request(target_user_id, approved_by=admin_id)
 
         display_name = (req or {}).get("full_name") or f"User#{target_user_id}"
-        mention = f'<a href="tg://user?id={target_user_id}">{display_name}</a>'
+        mention = f'<a href="tg://user?id={target_user_id}">{escape_html(display_name)}</a>'
 
         await callback.message.edit_text(
             f"✅ **Доступ предоставлен!**\n"
@@ -405,6 +426,21 @@ async def admin_approval_callback(
                 target_user_id,
             )
 
+        # Welcome + /help hint right after the grant (стандарт HuntTech:
+        # доступ предоставлен → пользователь сразу видит приветствие).
+        if welcome_text:
+            try:
+                await bot.send_message(
+                    chat_id=target_user_id,
+                    text=welcome_text,
+                    parse_mode=welcome_parse_mode,
+                )
+            except Exception:
+                logger.warning(
+                    "Could not send welcome to user %s after access grant",
+                    target_user_id,
+                )
+
     elif action == "deny":
         access_manager.deny_request(target_user_id)
         display_name = f"User#{target_user_id}"
@@ -420,6 +456,87 @@ async def admin_approval_callback(
             f"({display_name}).",
             parse_mode=ParseMode.MARKDOWN,
         )
+
+        # Notify the user about the denial so they know the request
+        # was rejected (and can re-request via /start afterwards).
+        try:
+            await bot.send_message(
+                chat_id=target_user_id,
+                text=DENIED_REQUEST_TEXT,
+                parse_mode=ParseMode.MARKDOWN,
+            )
+        except Exception:
+            logger.warning(
+                "Could not notify user %s about access denial "
+                "(user may not have started the bot)",
+                target_user_id,
+            )
+
+
+# ── Pending-запросы при старте бота ──────────────────────────────
+
+
+async def notify_admin_of_pending_requests(
+    bot: Any,
+    access_manager: Any,
+    bot_name: str = "Bot",
+) -> int:
+    """Отправить администратору уведомления о неподтверждённых запросах доступа.
+
+    Вызывается при старте бота (после приветствия и changelog): если часть
+    уведомлений потерялась (ошибка отправки, падение при обработке /start),
+    админ всё равно узнает о висящих запросах и одобрит/отклонит кнопками
+    «✅ Разрешить» / «❌ Запретить» (admin:allow / admin:deny).
+
+    Возвращает количество отправленных уведомлений (0 — нет pending).
+    """
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+    admin_id = access_manager.master_admin_id
+    sent = 0
+    for req in access_manager.get_pending_requests():
+        if req.get("status") != "pending":
+            continue
+        uid = req["user_id"]
+        display_name = req.get("full_name") or req.get("username") or f"User#{uid}"
+        mention = f'<a href="tg://user?id={uid}">{escape_html(display_name)}</a>'
+        username = req.get("username")
+        text = (
+            f"🔔 <b>Запрос доступа</b> к боту <i>{escape_html(bot_name)}</i> "
+            f"— ожидает рассмотрения\n\n"
+            f"👤 Пользователь: {mention}\n"
+            f"🆔 ID: <code>{uid}</code>\n"
+            f"📝 Username: @{escape_html(username or '—')}\n\n"
+            "Что хотите сделать?"
+        )
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="✅ Разрешить",
+                        callback_data=f"admin:allow:{uid}",
+                    ),
+                    InlineKeyboardButton(
+                        text="❌ Запретить",
+                        callback_data=f"admin:deny:{uid}",
+                    ),
+                ],
+            ]
+        )
+        try:
+            await bot.send_message(
+                chat_id=admin_id,
+                text=text,
+                reply_markup=kb,
+                parse_mode=ParseMode.HTML,
+            )
+            sent += 1
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                "Failed to notify admin %s about pending request %s: %s",
+                admin_id, uid, e,
+            )
+    return sent
 
 
 # ── User list with delete buttons ──────────────────────────────
@@ -448,7 +565,7 @@ async def user_list_handler(
         for req in pending:
             if req.get("status") == "pending":
                 name = req.get("full_name") or req.get("username") or f"User#{req['user_id']}"
-                lines.append(f"  • `{req['user_id']}` — {name}")
+                lines.append(f"  • `{req['user_id']}` — {escape_md_simple(name)}")
         lines.append("")
         lines.append("ℹ️ Используйте кнопки в уведомлении для одобрения.")
         lines.append("")
@@ -458,7 +575,7 @@ async def user_list_handler(
         for u in users:
             name = u.get("full_name") or u.get("username") or f"User#{u['user_id']}"
             banned = " 🚫" if u.get("is_banned") else ""
-            lines.append(f"  • `{u['user_id']}` — {name}{banned}")
+            lines.append(f"  • `{u['user_id']}` — {escape_md_simple(name)}{banned}")
 
         lines.append("")
         lines.append(f"👑 **Администраторы:** `{access_manager.get_admin_ids()}`")
@@ -679,6 +796,7 @@ __all__ = [
     "user_list_handler",
     "user_delete_callback",
     "access_callback_handler",
+    "notify_admin_of_pending_requests",
     "get_standard_user_commands",
     "get_standard_admin_commands",
     "get_standard_groups",

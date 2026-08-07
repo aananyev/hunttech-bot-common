@@ -28,17 +28,21 @@ from hunttech_bot_common.services.startup import (
 
 @pytest.fixture()
 def git_repo(tmp_path: Path) -> Path:
-    """Временный git-репозиторий с 2 коммитами."""
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "config", "user.email", "t@t"], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "t"], check=True)
-    (tmp_path / "file.txt").write_text("one", encoding="utf-8")
-    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "commit", "-q", "-m", "Первый коммит"], check=True)
-    (tmp_path / "file.txt").write_text("two", encoding="utf-8")
-    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "commit", "-q", "-m", "Второй коммит"], check=True)
-    return tmp_path
+    """Временный git-репозиторий с 2 коммитами (в подкаталоге, чтобы маркер
+    startup_state.json можно было класть ВНЕ репо — иначе он становится
+    untracked-файлом и ломает проверку «незакоммиченных изменений»)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    (repo / "file.txt").write_text("one", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "Первый коммит"], check=True)
+    (repo / "file.txt").write_text("two", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "Второй коммит"], check=True)
+    return repo
 
 
 class TestGitHelpers:
@@ -92,6 +96,42 @@ class TestBuildChangelog:
         assert head
         save_startup_marker(state, head)
         assert build_startup_changelog(git_repo, state) is None
+
+    def test_same_sha_uncommitted_shown(self, git_repo: Path, tmp_path: Path) -> None:
+        """Тот же SHA + незакоммиченные правки → сводка с файлами."""
+        state = tmp_path / "startup_state.json"
+        head = git_sha(git_repo)
+        assert head
+        save_startup_marker(state, head)
+        # правка без коммита
+        (git_repo / "file.txt").write_text("three (uncommitted)", encoding="utf-8")
+        (git_repo / "new_module.py").write_text("# fresh", encoding="utf-8")
+
+        result = build_startup_changelog(git_repo, state)
+        assert result is not None
+        assert result["header"] == "📦 Незакоммиченные изменения:"
+        joined = "\n".join(result["items"])
+        assert "file.txt" in joined
+        assert "new_module.py" in joined
+
+    def test_new_commits_priority_over_uncommitted(
+        self, git_repo: Path, tmp_path: Path
+    ) -> None:
+        """Новые коммиты приоритетнее незакоммиченных правок."""
+        state = tmp_path / "startup_state.json"  # ВНЕ репо — не untracked
+        head = git_sha(git_repo)
+        assert head
+        save_startup_marker(state, head)
+        # новый коммит + незакоммиченная правка
+        (git_repo / "file.txt").write_text("three", encoding="utf-8")
+        subprocess.run(["git", "-C", str(git_repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(git_repo), "commit", "-q", "-m", "Третий коммит"], check=True)
+        (git_repo / "file.txt").write_text("three (dirty)", encoding="utf-8")
+
+        result = build_startup_changelog(git_repo, state)
+        assert result is not None
+        assert result["header"] == "📦 Изменения с прошлого запуска:"
+        assert result["items"] == ["Третий коммит"]
 
     def test_new_commits_shown(self, git_repo: Path, tmp_path: Path) -> None:
         state = tmp_path / "startup_state.json"

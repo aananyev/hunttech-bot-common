@@ -48,6 +48,7 @@ DEFAULT_FIRST_RUN_ITEMS = 8
 
 HEADER_FIRST_RUN = "📦 Последние изменения бота:"
 HEADER_CHANGED = "📦 Изменения с прошлого запуска:"
+HEADER_UNCOMMITTED = "📦 Незакоммиченные изменения:"
 
 
 def bot_version(repo_dir: str | Path) -> str:
@@ -127,6 +128,25 @@ def git_recent_subjects(repo_dir: str | Path, max_items: int = DEFAULT_FIRST_RUN
         return []
 
 
+def git_uncommitted_changes(repo_dir: str | Path, max_items: int = DEFAULT_MAX_ITEMS) -> list[str]:
+    """Незакоммиченные изменения (git status --short), до max_items строк.
+
+    Показывает правки, которые ещё не в коммитах (modified/untracked) —
+    чтобы сводка при старте не молчала, пока код меняли без коммита
+    (реальная проблема: @hunttech_short_vacancy_bot, 2026-08-07).
+    """
+    try:
+        out = subprocess.run(
+            ["git", "status", "--short"],
+            capture_output=True, text=True, timeout=10,
+            cwd=str(repo_dir),
+        )
+        return [l.strip() for l in out.stdout.splitlines() if l.strip()][:max_items]
+    except Exception as e:  # noqa: BLE001
+        logger.warning("changelog: git status failed: %s", e)
+        return []
+
+
 # ── Маркер прошлого запуска ────────────────────────────────────────
 
 
@@ -185,6 +205,12 @@ def build_startup_changelog(
         if items:
             return {"header": HEADER_CHANGED, "items": items}
         logger.info("changelog: prev SHA не предок HEAD (rebase/force-push?) — без сводки")
+        return None
+    # Тот же SHA, но есть незакоммиченные правки — показываем их
+    # (иначе сводка молчит, пока код меняют без коммита).
+    items = git_uncommitted_changes(repo_dir, max_items=max_items)
+    if items:
+        return {"header": HEADER_UNCOMMITTED, "items": items}
     return None
 
 

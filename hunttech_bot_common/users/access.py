@@ -458,11 +458,18 @@ class AccessManager:
 
             # Check if already pending
             if user_id in self._pending_requests:
-                return {
-                    "is_new": False,
-                    "is_already_allowed": False,
-                    "user_info": self._pending_requests[user_id],
-                }
+                req = self._pending_requests[user_id]
+                # Denied request: allow re-request — create a NEW pending
+                # request so the admin gets a fresh notification
+                # (otherwise the user sees «Запрос уже отправлен» forever).
+                if req.get("status") == "denied":
+                    del self._pending_requests[user_id]
+                else:
+                    return {
+                        "is_new": False,
+                        "is_already_allowed": False,
+                        "user_info": req,
+                    }
 
             # New request
             req = {
