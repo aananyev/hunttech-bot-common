@@ -94,6 +94,39 @@ def test_act_not_overridden_by_contract_mention() -> None:
     assert out["document_type"] == "CONTRACT"
 
 
+REPORT_TEXT = """\
+ОТЧЁТ № 2026/07
+об оказанных услугах по поиску и первичному отбору кандидатов
+г. Саратов Дата: «31» июля 2026 г.
+1. Основание
+Настоящий отчёт составлен в рамках Договора возмездного оказания услуг № 161-У от
+24.06.2022 и Дополнительного соглашения № 2026-1 от 01.01.2026 между ООО «ХантТек» и
+ИП Либерман Екатериной Сергеевной.
+2. Период оказания услуг
+Услуги оказывались в период с 01 июля 2026 года по 31 июля 2026 года.
+3. Содержание оказанных услуг
+Исполнителем выполнены работы по анализу рынка труда, поиску кандидатов, проведению
+первичного отбора, организации собеседований.
+"""
+
+
+def test_report_referencing_contract_is_act_not_contract() -> None:
+    # Отчёт ссылается на договор-основание («в рамках Договора №...») —
+    # тип обязан быть ACT, а не CONTRACT (кейс Либермана 10.08.2026).
+    assert _looks_like_contract(REPORT_TEXT.lower()) is False
+    for llm_type in ("CONTRACT", "ACT", "UNKNOWN", ""):
+        out = _apply_text_hints(_base({"document_type": llm_type}), REPORT_TEXT)
+        assert out["document_type"] == "ACT", f"LLM={llm_type!r} → {out['document_type']}"
+
+
+def test_report_filename_hint() -> None:
+    assert _infer_document_type("2026-07-31 Отчет за июль ИП Либерман.pdf") == "ACT"
+    assert _infer_document_type("otchet-2026-07.pdf") == "ACT"
+    # Упоминание договора в тексте отчёта не должно дать CONTRACT
+    hint = "2026-07-31 Отчет за июль ИП Либерман.pdf  ОТЧЁТ № 2026/07 ... в рамках Договора возмездного оказания услуг № 161-У"
+    assert _infer_document_type(hint) == "ACT"
+
+
 def test_act_still_detected() -> None:
     act_text = "Акт выполненных работ № 12 от 01.06.2026\nЗаказчик: ООО ХАНТТЕК\nИсполнитель: ИП Иванов"
     out = _apply_text_hints(_base({"document_type": ""}), act_text)

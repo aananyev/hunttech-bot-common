@@ -1,44 +1,68 @@
 """Text-based hints for document recognition post-processing."""
 from __future__ import annotations
+import logging
 import re
 from datetime import date
 from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+def _document_title(lowered: str) -> str:
+    """Первая непустая строка документа — титул (заголовок)."""
+    for line in lowered.splitlines():
+        line = line.strip()
+        if line:
+            return line
+    return lowered.strip()
 
 def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
     if not text:
         return data
     normalized = dict(data)
     lowered = text.lower()
-    if _is_title(lowered, "универсальный передаточный документ") or (
-        "универсальный передаточный документ" in lowered
-        and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT")
+    before_type = normalized.get("document_type")
+    _apply_title_hints(normalized, _document_title(lowered))
+    if normalized.get("document_type") != before_type:
+        logger.info(
+            "text_hints: title=%r → document_type=%s (was %s)",
+            _document_title(lowered)[:70], normalized.get("document_type"), before_type,
+        )
+    if "универсальный передаточный документ" in lowered and normalized.get("document_type") not in (
+        "CONTRACT", "ADDITIONAL_AGREEMENT",
     ):
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
-    if _looks_like_contract(lowered):
+        logger.info("text_hints: 'универсальный передаточный документ' → UPD")
+    if _looks_like_contract(lowered) and normalized.get("document_type") in ("", "UNKNOWN", "OTHER", None):
         normalized["document_type"] = "CONTRACT"
         normalized["flow_type"] = "PRIMARY"
         normalized.pop("receipt_organization", None)
+        logger.info("text_hints: contract phrases → CONTRACT")
     if _looks_like_invoice(lowered) and normalized.get("document_type") not in (
         "CONTRACT", "ADDITIONAL_AGREEMENT", "UPD", "ACT",
     ):
         normalized["document_type"] = "INVOICE"
         normalized["flow_type"] = "PRIMARY"
         normalized.pop("receipt_organization", None)
+        logger.info("text_hints: invoice phrases → INVOICE")
     if "счет-фактура" in lowered and normalized.get("document_type") not in (
         "CONTRACT", "ADDITIONAL_AGREEMENT",
     ):
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
+        logger.info("text_hints: 'счет-фактура' → UPD")
     if (
         "акт выполненных работ" in lowered or "акт сдачи-приемки" in lowered or
         "акт выполненных услуг" in lowered or "акт сверки" in lowered
     ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT"):
         normalized["document_type"] = "ACT"
         normalized["flow_type"] = "PRIMARY"
+        logger.info("text_hints: act phrases → ACT")
     if _looks_like_receipt(text):
         normalized["document_type"] = "RECEIPT"
         normalized["flow_type"] = "ADVANCE_REPORT"
+        logger.info("text_hints: receipt phrases → RECEIPT")
 
     number_date = _extract_document_number_date(text)
     if number_date:
@@ -81,6 +105,35 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
             if _is_weak_receipt_counterparty(normalized.get("counterparty_name")):
                 normalized["counterparty_name"] = receipt_organization
     return normalized
+
+
+def _apply_title_hints(normalized: dict[str, Any], title: str) -> None:
+    """Титул (первая строка) документа — приоритетный маркер типа.
+
+    Перебивает ответ LLM: заголовок документа важнее, чем упоминание
+    «договор»/«счет» в тексте (например, отчёт ссылается на договор-основание).
+    """
+    title_markers = [
+        ("универсальный передаточный документ", "UPD"),
+        ("счет-фактура", "UPD"),
+        ("счёт-фактура", "UPD"),
+        ("дополнительное соглашение", "ADDITIONAL_AGREEMENT"),
+        ("допсоглашение", "ADDITIONAL_AGREEMENT"),
+        ("договор", "CONTRACT"),
+        ("отчет", "ACT"),
+        ("отчёт", "ACT"),
+        ("счет", "INVOICE"),
+        ("счёт", "INVOICE"),
+        ("акт", "ACT"),
+    ]
+    for marker, doc_type in title_markers:
+        if title.startswith(marker):
+            normalized["document_type"] = doc_type
+            normalized["flow_type"] = "PRIMARY"
+            if doc_type != "ADVANCE_REPORT":
+                normalized.pop("receipt_organization", None)
+            return
+
 
 def _looks_like_receipt(text: str) -> bool:
     lowered = text.lower()
@@ -467,8 +520,42 @@ def _infer_flow_type(text: str) -> str:
 
 def _infer_document_type(text: str) -> str:
     lowered = text.lower()
+    # Сначала — маркеры в имени файла / первых строках (hint_text начинается
+    # с original_name). «Отчет»/«отчёт» идут ПЕРЕД «договор»: отчёт часто
+    # ссылается на договор-основание («в рамках Договора №...»), и substring
+    # «договор» ловил бы падежную форму «Договора» в тексте отчёта.
+    head = lowered[:150]
+    head_markers = [
+        ("универсальный передаточный документ", "UPD"),
+        ("счет-фактура", "UPD"),
+        ("счёт-фактура", "UPD"),
+        ("дополнительное соглашение", "ADDITIONAL_AGREEMENT"),
+        ("допсоглашение", "ADDITIONAL_AGREEMENT"),
+        ("отчет", "ACT"),
+        ("отчёт", "ACT"),
+        ("otchet", "ACT"),
+        ("report", "ACT"),
+        ("договор", "CONTRACT"),
+        ("dogovor", "CONTRACT"),
+        ("contract", "CONTRACT"),
+        ("акт", "ACT"),
+        ("счет", "INVOICE"),
+        ("счёт", "INVOICE"),
+        ("schet", "INVOICE"),
+        ("invoice", "INVOICE"),
+        ("задани", "TASK"),
+        ("чек", "RECEIPT"),
+        ("receipt", "RECEIPT"),
+    ]
+    for marker, document_type in head_markers:
+        if re.search(rf"\b{re.escape(marker)}", head):
+            return document_type
     markers = [
         ("упд", "UPD"),
+        ("отчет", "ACT"),
+        ("отчёт", "ACT"),
+        ("otchet", "ACT"),
+        ("report", "ACT"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
@@ -476,6 +563,7 @@ def _infer_document_type(text: str) -> str:
         ("акт", "ACT"),
         ("счет", "INVOICE"),
         ("счёт", "INVOICE"),
+        ("schet", "INVOICE"),
         ("invoice", "INVOICE"),
         ("задани", "TASK"),
         ("чек", "RECEIPT"),

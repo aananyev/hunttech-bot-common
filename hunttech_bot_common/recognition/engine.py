@@ -2,12 +2,15 @@
 from __future__ import annotations
 import asyncio
 import json
+import logging
 import mimetypes
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Callable
+
+logger = logging.getLogger(__name__)
 
 try:
     from agent.plugin_llm import PluginLlmTextInput
@@ -113,8 +116,22 @@ def _recognize_text_document(
         purpose="hunttech_docs_recognition",
     )
     parsed = result.parsed if isinstance(result.parsed, dict) else _parse_json_fallback(result.text)
+    logger.info(
+        "recognition: LLM raw document_type=%r flow_type=%r confidence=%r needs_manual_review=%r (provider=%s model=%s)",
+        parsed.get("document_type"), parsed.get("flow_type"),
+        parsed.get("confidence"), parsed.get("needs_manual_review"),
+        result.provider, result.model,
+    )
     parsed = _normalize_result(parsed, hint_text=f"{original_name} {caption} {extracted_text[:2000]}")
+    logger.info(
+        "recognition: after _normalize_result document_type=%r flow_type=%r",
+        parsed.get("document_type"), parsed.get("flow_type"),
+    )
     parsed = _apply_text_hints(parsed, extracted_text)
+    logger.info(
+        "recognition: after _apply_text_hints document_type=%r flow_type=%r",
+        parsed.get("document_type"), parsed.get("flow_type"),
+    )
     provider = result.provider
     model = result.model
     if source_provider:
