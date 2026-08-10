@@ -9,17 +9,31 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
         return data
     normalized = dict(data)
     lowered = text.lower()
-    if "универсальный передаточный документ" in lowered:
+    if _is_title(lowered, "универсальный передаточный документ") or (
+        "универсальный передаточный документ" in lowered
+        and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT")
+    ):
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
-    if _looks_like_invoice(lowered):
+    if _looks_like_contract(lowered):
+        normalized["document_type"] = "CONTRACT"
+        normalized["flow_type"] = "PRIMARY"
+        normalized.pop("receipt_organization", None)
+    if _looks_like_invoice(lowered) and normalized.get("document_type") not in (
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "UPD", "ACT",
+    ):
         normalized["document_type"] = "INVOICE"
         normalized["flow_type"] = "PRIMARY"
         normalized.pop("receipt_organization", None)
-    if "счет-фактура" in lowered and normalized.get("document_type") in ("", "CONTRACT", "UNKNOWN"):
+    if "счет-фактура" in lowered and normalized.get("document_type") not in (
+        "CONTRACT", "ADDITIONAL_AGREEMENT",
+    ):
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
-    if "акт выполненных работ" in lowered or "акт сдачи-приемки" in lowered or "акт выполненных услуг" in lowered or "акт сверки" in lowered:
+    if (
+        "акт выполненных работ" in lowered or "акт сдачи-приемки" in lowered or
+        "акт выполненных услуг" in lowered or "акт сверки" in lowered
+    ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT"):
         normalized["document_type"] = "ACT"
         normalized["flow_type"] = "PRIMARY"
     if _looks_like_receipt(text):
@@ -87,10 +101,72 @@ def _looks_like_receipt(text: str) -> bool:
     return False
 
 
+def _is_title(text: str, phrase: str) -> bool:
+    """Проверяет, что фраза встречается как заголовок (начало текста или строки)."""
+    return bool(re.search(rf"(?:^|\n)\s*{re.escape(phrase)}\b", text))
+
+
+CONTRACT_PHRASES = (
+    "договор возмездного оказания услуг",
+    "договор оказания услуг",
+    "договор подряда",
+    "договор аренды",
+    "договор поставки",
+    "договор купли-продажи",
+    "договор на оказание услуг",
+    "договор об оказании услуг",
+    "договор возмездного",
+    "трудовой договор",
+    "договор займа",
+    "договор цессии",
+    "агентский договор",
+    "лицензионный договор",
+    "договор комиссии",
+    "договор поручения",
+    "договор дарения",
+    "договор хранения",
+    "договор фрахтования",
+    "договор энергоснабжения",
+    "договор страхования",
+    "настоящий договор",
+    "заключили настоящий договор",
+    "по настоящему договору",
+    "условия договора",
+    "предмет договора",
+    "по договору",
+    "в соответствии с договором",
+    "расторжения договора",
+    "исполнения договора",
+)
+
+
+def _looks_like_contract(lowered: str) -> bool:
+    """Проверяет, что документ — договор (по заголовку или устойчивым оборотам)."""
+    if _is_title(lowered, "договор"):
+        return True
+    for phrase in CONTRACT_PHRASES:
+        if phrase in lowered:
+            return True
+    # Отдельное слово «договор» в сочетании с признаком заключения/номера
+    if re.search(r"\bдоговор\b", lowered) and (
+        "заключи" in lowered or "договор №" in lowered or "договор n" in lowered
+    ):
+        return True
+    return False
+
+
 def _looks_like_invoice(lowered: str) -> bool:
-    """Проверяет, похож ли текст на счёт на оплату (PRIMARY, не ADVANCE_REPORT)."""
+    """Проверяет, похож ли текст на счёт на оплату (PRIMARY, не ADVANCE_REPORT).
+
+    Не срабатывает на договорах: в них тоже есть «расчетный счет» и «Заказчик».
+    """
     if "счет на оплату" in lowered or "счёт на оплату" in lowered:
         return True
+    if _is_title(lowered, "счет") or _is_title(lowered, "счёт"):
+        return True
+    # Слабая ветка — только если в тексте НЕТ признаков договора
+    if "договор" in lowered or "дог." in lowered:
+        return False
     if ("счет" in lowered or "счёт" in lowered) and ("расчетный счет" in lowered or "р/с" in lowered or "банк" in lowered):
         if "покупатель" in lowered or "заказчик" in lowered or "плательщик" in lowered:
             return True
@@ -394,11 +470,16 @@ def _infer_document_type(text: str) -> str:
     markers = [
         ("упд", "UPD"),
         ("договор", "CONTRACT"),
+        ("dogovor", "CONTRACT"),
+        ("contract", "CONTRACT"),
+        ("допсоглашени", "ADDITIONAL_AGREEMENT"),
         ("акт", "ACT"),
         ("счет", "INVOICE"),
         ("счёт", "INVOICE"),
+        ("invoice", "INVOICE"),
         ("задани", "TASK"),
         ("чек", "RECEIPT"),
+        ("receipt", "RECEIPT"),
     ]
     for marker, document_type in markers:
         if marker in lowered:

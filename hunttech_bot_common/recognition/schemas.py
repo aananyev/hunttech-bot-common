@@ -60,7 +60,9 @@ Rules:
 - PRIMARY: contracts, acts, UPD, invoices (счет, счёт), tasks, appendices and other counterparty documents.
 - ADVANCE_REPORT: cash-register receipts (кассовый чек), fuel, taxi, parking, communication, services and other expense confirmations.
 - A "счёт на оплату" (payment invoice) is always PRIMARY, never ADVANCE_REPORT.
-- If the text contains "Получатель" or "Банк" with bank details AND "Заказчик" or "Покупатель" — it is likely an invoice (PRIMARY).
+- Determine document_type primarily from the document TITLE/HEADING, not from incidental words. Examples: "ДОГОВОР...", "Договор возмездного оказания услуг", "Договор оказания услуг", "трудовой договор" → CONTRACT; "СЧЕТ №...", "Счет на оплату", "Счёт на оплату" → INVOICE; "АКТ..." → ACT; "УПД", "Универсальный передаточный документ", "Счет-фактура" → UPD; "Дополнительное соглашение", "Допсоглашение" → ADDITIONAL_AGREEMENT.
+- IMPORTANT: bank details ("расчетный счет", "р/с", "банк") and parties "Заказчик"/"Исполнитель" are present in contracts as well — their presence alone does NOT make a document an invoice. A contract (договор) must be classified as CONTRACT even if it mentions bank accounts and payment terms.
+- If the text contains "Получатель" or "Банк" with bank details AND "Заказчик" or "Покупатель" AND there is NO contract title (no "ДОГОВОР"/"договор" heading) — it is likely an invoice (PRIMARY).
 - If at least one legal entity is visible in a PRIMARY document, counterparty_name must not be null.
 - For acts with "Заказчик" and "Исполнитель", prefer "Заказчик" as the primary organization when HRM HuntTech's own side is unclear; keep needs_manual_review=true and mention both parties in summary.
 - Dates must be ISO YYYY-MM-DD when confidently visible.
