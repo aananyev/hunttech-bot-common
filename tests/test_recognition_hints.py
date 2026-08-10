@@ -138,3 +138,43 @@ def test_report_not_overridden_by_act_mention() -> None:
     text = REPORT_TEXT + "\nПриемка оформляется актом выполненных работ."
     out = _apply_text_hints(_base({"document_type": ""}), text)
     assert out["document_type"] == "REPORT"
+
+
+DECISION_TEXT = """\
+Решение о привлечении страхователя к ответственности за совершение правонарушения в сфере законодательства об индивидуальном (персонифицированном) учете
+Отделение Фонда пенсионного и социального страхования Российской Федерации по Саратовской области
+№ 073S19260002053 от 04.08.2026
+ООО «ХАНТТЕК» ИНН 6455073518
+"""
+
+
+def test_decision_from_title_not_act() -> None:
+    """«Решение ... о привлечении к ответственности» — DECISION, а не ACT
+    (docs-bot, кейс 10.08.2026: документ СФР определён как акт)."""
+    out = _apply_text_hints(_base({"document_type": "ACT"}), DECISION_TEXT)
+    assert out["document_type"] == "DECISION"
+
+
+def test_decision_survives_hints_when_llm_was_act() -> None:
+    for llm_type in ("ACT", "CONTRACT", "UNKNOWN", ""):
+        out = _apply_text_hints(_base({"document_type": llm_type}), DECISION_TEXT)
+        assert out["document_type"] == "DECISION", f"LLM={llm_type!r} → {out['document_type']}"
+
+
+def test_decision_not_overridden_by_act_phrase() -> None:
+    # Решение может упоминать акт/счёт в тексте — тип остаётся DECISION.
+    text = DECISION_TEXT + "\nК акту камеральной проверки прилагается расчет."
+    out = _apply_text_hints(_base({"document_type": ""}), text)
+    assert out["document_type"] == "DECISION"
+
+
+def test_decision_filename_hint() -> None:
+    assert _infer_document_type("2026-08-04 Решение СФР 073S19260002053.pdf") == "DECISION"
+    assert _infer_document_type("reshenie-073S19260002053.pdf") == "DECISION"
+
+
+def test_act_still_detected_with_decision_word() -> None:
+    # Обычный акт, в тексте которого есть слово «решение» — остаётся ACT.
+    act_text = "Акт выполненных работ № 12 от 01.06.2026\nРешение о приемке работ подписано сторонами.\nЗаказчик: ООО ХАНТТЕК"
+    out = _apply_text_hints(_base({"document_type": ""}), act_text)
+    assert out["document_type"] == "ACT"

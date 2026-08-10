@@ -29,7 +29,7 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
             _document_title(lowered)[:70], normalized.get("document_type"), before_type,
         )
     if "универсальный передаточный документ" in lowered and normalized.get("document_type") not in (
-        "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT",
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION",
     ):
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
@@ -40,14 +40,14 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
         normalized.pop("receipt_organization", None)
         logger.info("text_hints: contract phrases → CONTRACT")
     if _looks_like_invoice(lowered) and normalized.get("document_type") not in (
-        "CONTRACT", "ADDITIONAL_AGREEMENT", "UPD", "ACT", "REPORT",
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "UPD", "ACT", "REPORT", "DECISION",
     ):
         normalized["document_type"] = "INVOICE"
         normalized["flow_type"] = "PRIMARY"
         normalized.pop("receipt_organization", None)
         logger.info("text_hints: invoice phrases → INVOICE")
     if "счет-фактура" in lowered and normalized.get("document_type") not in (
-        "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT",
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION",
     ):
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
@@ -55,7 +55,7 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
     if (
         "акт выполненных работ" in lowered or "акт сдачи-приемки" in lowered or
         "акт выполненных услуг" in lowered or "акт сверки" in lowered
-    ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT"):
+    ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION"):
         normalized["document_type"] = "ACT"
         normalized["flow_type"] = "PRIMARY"
         logger.info("text_hints: act phrases → ACT")
@@ -125,6 +125,7 @@ def _apply_title_hints(normalized: dict[str, Any], title: str) -> None:
         ("счет", "INVOICE"),
         ("счёт", "INVOICE"),
         ("акт", "ACT"),
+        ("решение", "DECISION"),
     ]
     for marker, doc_type in title_markers:
         if title.startswith(marker):
@@ -538,6 +539,9 @@ def _infer_document_type(text: str) -> str:
         ("отчёт", "REPORT"),
         ("otchet", "REPORT"),
         ("report", "REPORT"),
+        ("решени", "DECISION"),
+        ("reshenie", "DECISION"),
+        ("decision", "DECISION"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
@@ -559,6 +563,9 @@ def _infer_document_type(text: str) -> str:
         ("отчёт", "REPORT"),
         ("otchet", "REPORT"),
         ("report", "REPORT"),
+        ("решени", "DECISION"),
+        ("reshenie", "DECISION"),
+        ("decision", "DECISION"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
