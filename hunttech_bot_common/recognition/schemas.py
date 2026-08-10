@@ -20,7 +20,7 @@ DOCUMENT_SCHEMA: dict[str, Any] = {
         "flow_type": {"type": "string", "enum": ["PRIMARY", "ADVANCE_REPORT", "UNKNOWN"]},
         "document_type": {
             "type": "string",
-            "enum": ["CONTRACT", "ACT", "UPD", "INVOICE", "TASK", "RECEIPT", "ADDITIONAL_AGREEMENT", "OTHER", "UNKNOWN"],
+            "enum": ["CONTRACT", "ACT", "REPORT", "UPD", "INVOICE", "TASK", "RECEIPT", "ADDITIONAL_AGREEMENT", "OTHER", "UNKNOWN"],
         },
         "document_date": {"type": ["string", "null"], "description": "ISO date YYYY-MM-DD"},
         "document_number": {"type": ["string", "null"]},
@@ -60,7 +60,7 @@ Rules:
 - PRIMARY: contracts, acts, UPD, invoices (счет, счёт), tasks, appendices and other counterparty documents.
 - ADVANCE_REPORT: cash-register receipts (кассовый чек), fuel, taxi, parking, communication, services and other expense confirmations.
 - A "счёт на оплату" (payment invoice) is always PRIMARY, never ADVANCE_REPORT.
-- Determine document_type primarily from the document TITLE/HEADING, not from incidental words. Examples: "ДОГОВОР...", "Договор возмездного оказания услуг", "Договор оказания услуг", "трудовой договор" → CONTRACT; "СЧЕТ №...", "Счет на оплату", "Счёт на оплату" → INVOICE; "АКТ..." → ACT; "УПД", "Универсальный передаточный документ", "Счет-фактура" → UPD; "Дополнительное соглашение", "Допсоглашение" → ADDITIONAL_AGREEMENT; "ОТЧЕТ №...", "Отчет об оказанных услугах", "Отчет о выполненных работах" → ACT (это закрывающий отчёт, аналог акта, НЕ договор).
+- Determine document_type primarily from the document TITLE/HEADING, not from incidental words. Examples: "ДОГОВОР...", "Договор возмездного оказания услуг", "Договор оказания услуг", "трудовой договор" → CONTRACT; "СЧЕТ №...", "Счет на оплату", "Счёт на оплату" → INVOICE; "АКТ..." → ACT; "УПД", "Универсальный передаточный документ", "Счет-фактура" → UPD; "Дополнительное соглашение", "Допсоглашение" → ADDITIONAL_AGREEMENT; "ОТЧЕТ №...", "Отчет об оказанных услугах", "Отчет о выполненных работах", "Отчет за июль..." → REPORT (это отчёт, отдельный тип документа, НЕ акт и НЕ договор).
 - IMPORTANT: a reference to a contract inside the text ("в рамках Договора №...", "по договору от ...", "основание: договор №...") does NOT make the document a contract — the document type is determined by its own title. Reports (отчет), acts (акт) and invoices (счет) often reference the underlying contract.
 - IMPORTANT: bank details ("расчетный счет", "р/с", "банк") and parties "Заказчик"/"Исполнитель" are present in contracts as well — their presence alone does NOT make a document an invoice. A contract (договор) must be classified as CONTRACT even if it mentions bank accounts and payment terms.
 - If the text contains "Получатель" or "Банк" with bank details AND "Заказчик" or "Покупатель" AND there is NO contract title (no "ДОГОВОР"/"договор" heading) — it is likely an invoice (PRIMARY).
@@ -116,6 +116,9 @@ def _normalize_result(data: dict[str, Any], *, hint_text: str = "") -> dict[str,
         {
             "contract": "CONTRACT",
             "договор": "CONTRACT",
+            "report": "REPORT",
+            "отчет": "REPORT",
+            "отчёт": "REPORT",
             "act": "ACT",
             "акт": "ACT",
             "upd": "UPD",

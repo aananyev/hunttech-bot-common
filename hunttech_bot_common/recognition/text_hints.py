@@ -29,7 +29,7 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
             _document_title(lowered)[:70], normalized.get("document_type"), before_type,
         )
     if "универсальный передаточный документ" in lowered and normalized.get("document_type") not in (
-        "CONTRACT", "ADDITIONAL_AGREEMENT",
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT",
     ):
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
@@ -40,14 +40,14 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
         normalized.pop("receipt_organization", None)
         logger.info("text_hints: contract phrases → CONTRACT")
     if _looks_like_invoice(lowered) and normalized.get("document_type") not in (
-        "CONTRACT", "ADDITIONAL_AGREEMENT", "UPD", "ACT",
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "UPD", "ACT", "REPORT",
     ):
         normalized["document_type"] = "INVOICE"
         normalized["flow_type"] = "PRIMARY"
         normalized.pop("receipt_organization", None)
         logger.info("text_hints: invoice phrases → INVOICE")
     if "счет-фактура" in lowered and normalized.get("document_type") not in (
-        "CONTRACT", "ADDITIONAL_AGREEMENT",
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT",
     ):
         normalized["document_type"] = "UPD"
         normalized["flow_type"] = "PRIMARY"
@@ -55,7 +55,7 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
     if (
         "акт выполненных работ" in lowered or "акт сдачи-приемки" in lowered or
         "акт выполненных услуг" in lowered or "акт сверки" in lowered
-    ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT"):
+    ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT"):
         normalized["document_type"] = "ACT"
         normalized["flow_type"] = "PRIMARY"
         logger.info("text_hints: act phrases → ACT")
@@ -120,8 +120,8 @@ def _apply_title_hints(normalized: dict[str, Any], title: str) -> None:
         ("дополнительное соглашение", "ADDITIONAL_AGREEMENT"),
         ("допсоглашение", "ADDITIONAL_AGREEMENT"),
         ("договор", "CONTRACT"),
-        ("отчет", "ACT"),
-        ("отчёт", "ACT"),
+        ("отчет", "REPORT"),
+        ("отчёт", "REPORT"),
         ("счет", "INVOICE"),
         ("счёт", "INVOICE"),
         ("акт", "ACT"),
@@ -462,6 +462,9 @@ def _normalize_result(data: dict[str, Any], *, hint_text: str = "") -> dict[str,
         {
             "contract": "CONTRACT",
             "договор": "CONTRACT",
+            "report": "REPORT",
+            "отчет": "REPORT",
+            "отчёт": "REPORT",
             "act": "ACT",
             "акт": "ACT",
             "upd": "UPD",
@@ -531,10 +534,10 @@ def _infer_document_type(text: str) -> str:
         ("счёт-фактура", "UPD"),
         ("дополнительное соглашение", "ADDITIONAL_AGREEMENT"),
         ("допсоглашение", "ADDITIONAL_AGREEMENT"),
-        ("отчет", "ACT"),
-        ("отчёт", "ACT"),
-        ("otchet", "ACT"),
-        ("report", "ACT"),
+        ("отчет", "REPORT"),
+        ("отчёт", "REPORT"),
+        ("otchet", "REPORT"),
+        ("report", "REPORT"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
@@ -552,10 +555,10 @@ def _infer_document_type(text: str) -> str:
             return document_type
     markers = [
         ("упд", "UPD"),
-        ("отчет", "ACT"),
-        ("отчёт", "ACT"),
-        ("otchet", "ACT"),
-        ("report", "ACT"),
+        ("отчет", "REPORT"),
+        ("отчёт", "REPORT"),
+        ("otchet", "REPORT"),
+        ("report", "REPORT"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),

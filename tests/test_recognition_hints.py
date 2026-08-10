@@ -110,24 +110,31 @@ REPORT_TEXT = """\
 """
 
 
-def test_report_referencing_contract_is_act_not_contract() -> None:
+def test_report_referencing_contract_is_report_not_contract() -> None:
     # Отчёт ссылается на договор-основание («в рамках Договора №...») —
-    # тип обязан быть ACT, а не CONTRACT (кейс Либермана 10.08.2026).
+    # тип обязан быть REPORT, а не CONTRACT и не ACT (кейс Либермана 10.08.2026).
     assert _looks_like_contract(REPORT_TEXT.lower()) is False
-    for llm_type in ("CONTRACT", "ACT", "UNKNOWN", ""):
+    for llm_type in ("CONTRACT", "ACT", "REPORT", "UNKNOWN", ""):
         out = _apply_text_hints(_base({"document_type": llm_type}), REPORT_TEXT)
-        assert out["document_type"] == "ACT", f"LLM={llm_type!r} → {out['document_type']}"
+        assert out["document_type"] == "REPORT", f"LLM={llm_type!r} → {out['document_type']}"
 
 
 def test_report_filename_hint() -> None:
-    assert _infer_document_type("2026-07-31 Отчет за июль ИП Либерман.pdf") == "ACT"
-    assert _infer_document_type("otchet-2026-07.pdf") == "ACT"
+    assert _infer_document_type("2026-07-31 Отчет за июль ИП Либерман.pdf") == "REPORT"
+    assert _infer_document_type("otchet-2026-07.pdf") == "REPORT"
     # Упоминание договора в тексте отчёта не должно дать CONTRACT
     hint = "2026-07-31 Отчет за июль ИП Либерман.pdf  ОТЧЁТ № 2026/07 ... в рамках Договора возмездного оказания услуг № 161-У"
-    assert _infer_document_type(hint) == "ACT"
+    assert _infer_document_type(hint) == "REPORT"
 
 
 def test_act_still_detected() -> None:
     act_text = "Акт выполненных работ № 12 от 01.06.2026\nЗаказчик: ООО ХАНТТЕК\nИсполнитель: ИП Иванов"
     out = _apply_text_hints(_base({"document_type": ""}), act_text)
     assert out["document_type"] == "ACT"
+
+
+def test_report_not_overridden_by_act_mention() -> None:
+    # Отчёт может упоминать акт выполненных работ в тексте — тип остаётся REPORT.
+    text = REPORT_TEXT + "\nПриемка оформляется актом выполненных работ."
+    out = _apply_text_hints(_base({"document_type": ""}), text)
+    assert out["document_type"] == "REPORT"
