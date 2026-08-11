@@ -178,3 +178,56 @@ def test_act_still_detected_with_decision_word() -> None:
     act_text = "Акт выполненных работ № 12 от 01.06.2026\nРешение о приемке работ подписано сторонами.\nЗаказчик: ООО ХАНТТЕК"
     out = _apply_text_hints(_base({"document_type": ""}), act_text)
     assert out["document_type"] == "ACT"
+
+
+GPH_ACT_TEXT = """\
+Акт № 2026-07 об оказании услуг
+Заказчик: ООО «ХантТек» ИНН 6455073518
+Исполнитель: Левина Юлия Сергеевна ИНН 644007676887
+Стоимость услуг: 30 000,00 руб.
+"""
+
+
+def test_act_counterparty_never_own_company() -> None:
+    """Акт ГПХ: LLM вернул «ООО «ХантТек»» (заказчик) — хинт заменяет на
+    внешнюю сторону (Исполнитель — Левина). Кейс 11.08.2026: акт Левиной
+    распознавался с контрагентом ХантТек, папка не находилась и карта
+    отравлялась ключом 'ханттек' → папка ГПХ Левиной."""
+    out = _apply_text_hints(
+        _base({"document_type": "ACT", "counterparty_name": "ООО «ХантТек»"}),
+        GPH_ACT_TEXT,
+    )
+    assert out["counterparty_name"] == "Левина Юлия Сергеевна"
+    assert out["needs_manual_review"] is True
+
+
+def test_act_counterparty_empty_picks_external_party() -> None:
+    """Акт ГПХ с пустым контрагентом: выбирается Исполнитель (внешняя
+    сторона), а не Заказчик-ХантТек."""
+    out = _apply_text_hints(
+        _base({"document_type": "ACT", "counterparty_name": None}),
+        GPH_ACT_TEXT,
+    )
+    assert out["counterparty_name"] == "Левина Юлия Сергеевна"
+
+
+def test_sales_upd_counterparty_is_client_not_own() -> None:
+    """УПД от HRM клиенту: Поставщик — ХантТек (своя компания), контрагент —
+    Покупатель (клиент)."""
+    text = "УПД № 5 от 01.08.2026\nПоставщик: ООО «ХантТек» ИНН 6455073518\nПокупатель: ООО «Ромашка» ИНН 7701234567\n"
+    out = _apply_text_hints(
+        _base({"document_type": "UPD", "counterparty_name": "ООО «ХантТек»"}),
+        text,
+    )
+    assert out["counterparty_name"] == "ООО «Ромашка»"
+
+
+def test_own_company_alone_no_override() -> None:
+    """Внешней стороны в тексте нет — контрагент остаётся как есть
+    (карта папок защищена отдельно: запись по своей компании не пишется)."""
+    text = "Акт № 1 от 01.01.2026\nОрганизация: ООО «ХантТек»\n"
+    out = _apply_text_hints(
+        _base({"document_type": "ACT", "counterparty_name": "ООО «ХантТек»"}),
+        text,
+    )
+    assert out["counterparty_name"] == "ООО «ХантТек»"

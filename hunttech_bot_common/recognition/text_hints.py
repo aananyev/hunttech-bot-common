@@ -85,6 +85,20 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
             note = f"Организация выбрана из OCR как основной кандидат: {primary_party}."
             normalized["summary"] = f"{summary} {note}".strip()
 
+        # Собственная компания HRM не может быть контрагентом: документы, где
+        # заказчик/исполнитель — сама компания (акты, УПД, счета), раскладываются
+        # в папку ВНЕШНЕЙ стороны. Если LLM вернул «ООО «ХантТек»» — берём
+        # внешнюю сторону из текста (Исполнитель/Заказчик/Покупатель/...).
+        if _is_own_company(normalized.get("counterparty_name")):
+            external = _extract_primary_party(text)
+            if external:
+                normalized["counterparty_name"] = external
+                normalized["needs_manual_review"] = True
+                summary = str(normalized.get("summary") or "").strip()
+                note = f"Контрагент — внешняя сторона (не HRM): {external}."
+                normalized["summary"] = f"{summary} {note}".strip()
+                logger.info("text_hints: own-company counterparty → external party %r", external)
+
     inn = _extract_inn(text)
     if inn and not normalized.get("counterparty_inn"):
         normalized["counterparty_inn"] = inn
@@ -247,14 +261,27 @@ def _extract_named_value(text: str, pattern: str) -> str | None:
     value = " ".join(match.group(1).split())
     return value.strip(" ,;") or None
 
+def _is_own_company(value: Any) -> bool:
+    """Является ли сторона собственной компанией HRM (ООО «ХантТек»/ХантТек)."""
+    text = str(value or "").strip().lower()
+    if not text:
+        return False
+    text = text.replace("«", "").replace("»", "").replace('"', "").replace("'", "")
+    return "ханттек" in text or "hunttech" in text
+
 def _extract_primary_party(text: str) -> str | None:
     preferred_labels = ("Покупатель", "Заказчик", "Клиент", "Плательщик")
     secondary_labels = ("Исполнитель", "Поставщик", "Продавец")
     for label in preferred_labels + secondary_labels:
         party = _extract_party_by_label(text, label)
-        if party:
+        # Собственная компания HRM никогда не является контрагентом —
+        # документы раскладываются в папку ВНЕШНЕЙ стороны.
+        if party and not _is_own_company(party):
             return party
-    return _extract_first_legal_entity(text)
+    entity = _extract_first_legal_entity(text)
+    if entity and not _is_own_company(entity):
+        return entity
+    return None
 
 def _extract_party_by_label(text: str, label: str) -> str | None:
     stop_labels = (

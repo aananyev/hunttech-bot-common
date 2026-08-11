@@ -65,7 +65,7 @@ Rules:
 - IMPORTANT: bank details ("расчетный счет", "р/с", "банк") and parties "Заказчик"/"Исполнитель" are present in contracts as well — their presence alone does NOT make a document an invoice. A contract (договор) must be classified as CONTRACT even if it mentions bank accounts and payment terms.
 - If the text contains "Получатель" or "Банк" with bank details AND "Заказчик" or "Покупатель" AND there is NO contract title (no "ДОГОВОР"/"договор" heading) — it is likely an invoice (PRIMARY).
 - If at least one legal entity is visible in a PRIMARY document, counterparty_name must not be null.
-- For acts with "Заказчик" and "Исполнитель", prefer "Заказчик" as the primary organization when HRM HuntTech's own side is unclear; keep needs_manual_review=true and mention both parties in summary.
+- counterparty_name is ALWAYS the EXTERNAL party — never HRM HuntTech's own company (ООО «ХантТек», «ХантТек», ООО "ХАНТТЕК", ХАНТТЕК). For acts/УПД/invoices with "Заказчик" and "Исполнитель": if one of them is HRM HuntTech, the counterparty is the OTHER party — for ГПХ/самозанятые documents this is the contractor person (e.g. "Левина Юлия Сергеевна"). If both parties are external, prefer the party the document comes from: the Исполнитель/Поставщик for incoming supplier acts, the Заказчик/Покупатель for HRM's own sales documents. Set needs_manual_review=true and mention both parties in summary when the role is ambiguous.
 - Dates must be ISO YYYY-MM-DD when confidently visible.
 - Amount is numeric with dot separator.
 - Currency defaults to RUB only when the document is clearly Russian/ruble-denominated.
