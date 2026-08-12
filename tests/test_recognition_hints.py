@@ -231,3 +231,45 @@ def test_own_company_alone_no_override() -> None:
         text,
     )
     assert out["counterparty_name"] == "ООО «ХантТек»"
+
+
+RECONCILIATION_TEXT = """\
+Акт сверки взаимных расчетов № 14 от 31.07.2026
+ООО «ХАНТТЕК» ИНН 6455073518
+Контрагент: ООО «Ромашка» ИНН 7701234567
+Сальдо на начало периода: 0,00
+Итоговое сальдо: 125 400,00
+"""
+
+
+def test_reconciliation_from_title_not_act() -> None:
+    """«Акт сверки взаимных расчетов» — RECONCILIATION, а не ACT:
+    акт сверки — отдельный тип документа (требование владельца 12.08.2026)."""
+    out = _apply_text_hints(_base({"document_type": "ACT"}), RECONCILIATION_TEXT)
+    assert out["document_type"] == "RECONCILIATION"
+
+
+def test_reconciliation_survives_hints_when_llm_was_act() -> None:
+    for llm_type in ("ACT", "OTHER", "UNKNOWN", ""):
+        out = _apply_text_hints(_base({"document_type": llm_type}), RECONCILIATION_TEXT)
+        assert out["document_type"] == "RECONCILIATION", f"LLM={llm_type!r} → {out['document_type']}"
+
+
+def test_reconciliation_not_overridden_by_act_phrase() -> None:
+    # «акт сверки» в тексте не должен уйти в ACT-хинт «акт выполненных работ».
+    text = RECONCILIATION_TEXT + "\nОснование: акт оказанных услуг от 30.06.2026."
+    out = _apply_text_hints(_base({"document_type": ""}), text)
+    assert out["document_type"] == "RECONCILIATION"
+
+
+def test_reconciliation_filename_hint() -> None:
+    assert _infer_document_type("2026-07-31 Акт сверки ООО Ромашка.pdf") == "RECONCILIATION"
+    assert _infer_document_type("Акт_сверки_взаимных_расчетов_14.pdf") == "RECONCILIATION"
+    assert _infer_document_type("sverka-romashka-2026-07.pdf") == "RECONCILIATION"
+
+
+def test_act_still_detected_without_sverka() -> None:
+    # Обычный акт выполненных работ без слова «сверк» — остаётся ACT.
+    act_text = "Акт выполненных работ № 12 от 01.06.2026\nЗаказчик: ООО ХАНТТЕК\nИсполнитель: ИП Иванов"
+    out = _apply_text_hints(_base({"document_type": ""}), act_text)
+    assert out["document_type"] == "ACT"

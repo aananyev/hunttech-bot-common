@@ -54,11 +54,23 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
         logger.info("text_hints: 'счет-фактура' → UPD")
     if (
         "акт выполненных работ" in lowered or "акт сдачи-приемки" in lowered or
-        "акт выполненных услуг" in lowered or "акт сверки" in lowered
-    ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION"):
+        "акт выполненных услуг" in lowered or "акт оказанных услуг" in lowered
+    ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION", "RECONCILIATION"):
         normalized["document_type"] = "ACT"
         normalized["flow_type"] = "PRIMARY"
         logger.info("text_hints: act phrases → ACT")
+    # «Акт сверки» — ОТДЕЛЬНЫЙ тип документа (RECONCILIATION), НИКОГДА не ACT:
+    # акт сверки взаимных расчетов — это не акт выполненных работ. Хинт по обороту
+    # перебивает ACT/OTHER/UNKNOWN/пустое (если LLM неверно вернул ACT), но не
+    # трогает CONTRACT/ADDITIONAL_AGREEMENT/REPORT/DECISION. Substring «сверк»
+    # покрывает и «акт_сверки» (имя файла с подчёркиванием), и «сверка/сверки/сверке».
+    if (
+        "сверк" in lowered or "sverka" in lowered
+    ) and normalized.get("document_type") not in ("CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION"):
+        normalized["document_type"] = "RECONCILIATION"
+        normalized["flow_type"] = "PRIMARY"
+        normalized.pop("receipt_organization", None)
+        logger.info("text_hints: reconciliation phrases → RECONCILIATION")
     if _looks_like_receipt(text):
         normalized["document_type"] = "RECEIPT"
         normalized["flow_type"] = "ADVANCE_REPORT"
@@ -138,6 +150,9 @@ def _apply_title_hints(normalized: dict[str, Any], title: str) -> None:
         ("отчёт", "REPORT"),
         ("счет", "INVOICE"),
         ("счёт", "INVOICE"),
+        # «Акт сверки» — ОТДЕЛЬНЫЙ тип (RECONCILIATION): маркер ДО «акт» → ACT,
+        # иначе «Акт сверки взаимных расчетов» классифицировался бы как ACT.
+        ("акт сверки", "RECONCILIATION"),
         ("акт", "ACT"),
         ("решение", "DECISION"),
     ]
@@ -556,6 +571,10 @@ def _infer_document_type(text: str) -> str:
     # ссылается на договор-основание («в рамках Договора №...»), и substring
     # «договор» ловил бы падежную форму «Договора» в тексте отчёта.
     head = lowered[:150]
+    # «Сверк»/«sverka» в имени файла — RECONCILIATION (без \b-границы: «акт_сверки»
+    # с подчёркиванием и латиница «sverka» иначе не матчатся).
+    if "сверк" in head or "sverka" in head:
+        return "RECONCILIATION"
     head_markers = [
         ("универсальный передаточный документ", "UPD"),
         ("счет-фактура", "UPD"),
@@ -572,6 +591,9 @@ def _infer_document_type(text: str) -> str:
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
+        # «Акт сверки»/«сверка» — ОТДЕЛЬНЫЙ тип (RECONCILIATION): маркер ДО «акт»,
+        # иначе «акт сверки» в имени файла дал бы ACT.
+        ("сверк", "RECONCILIATION"),
         ("акт", "ACT"),
         ("счет", "INVOICE"),
         ("счёт", "INVOICE"),
@@ -597,6 +619,8 @@ def _infer_document_type(text: str) -> str:
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
         ("допсоглашени", "ADDITIONAL_AGREEMENT"),
+        ("сверк", "RECONCILIATION"),
+        ("sverka", "RECONCILIATION"),
         ("акт", "ACT"),
         ("счет", "INVOICE"),
         ("счёт", "INVOICE"),
