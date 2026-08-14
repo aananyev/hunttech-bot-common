@@ -80,11 +80,11 @@ class TestReport:
             hourly_tk=500, hourly_ip=600, empl="",
             want_tk=True, want_ip=True,
         )
-        assert "✅ **Расчёт ставки кандидата**" in report
-        assert "💰 Ставка заказчика: **2500** руб/час" in report
+        assert "✅ *Расчёт ставки кандидата*" in report
+        assert "💰 Ставка заказчика: *2500* руб/час" in report
         assert "🔍 Найдено точное совпадение" in report
-        assert "🤝 ГПХ — **500** руб./час на руки." in report
-        assert "💼 ИП — **600** руб./час, налоги оплачиваются" in report
+        assert "🤝 ГПХ — *500* руб./час на руки." in report
+        assert "💼 ИП — *600* руб./час, налоги оплачиваются" in report
 
     def test_nearest_lower_report_mentions_db_rate(self) -> None:
         report = build_candidate_rates_report(
@@ -92,8 +92,8 @@ class TestReport:
             hourly_tk=500, hourly_ip=600, empl="ГПХ",
             want_tk=True, want_ip=False,
         )
-        assert "взята ближайшая меньшая ставка (**2500** руб/час)" in report
-        assert "📌 Оформление в вакансии: **ГПХ** — показана только эта ставка." in report
+        assert "взята ближайшая меньшая ставка (*2500* руб/час)" in report
+        assert "📌 Оформление в вакансии: *ГПХ* — показана только эта ставка." in report
         assert "💼 ИП" not in report
 
     def test_single_employment_hides_other(self) -> None:
@@ -103,7 +103,7 @@ class TestReport:
             want_tk=False, want_ip=True,
         )
         assert "🤝 ГПХ" not in report
-        assert "💼 ИП — **600**" in report
+        assert "💼 ИП — *600*" in report
 
 
 # ═══════════════════════════════════════════════
@@ -192,7 +192,7 @@ class TestCalculate:
         assert result["hourly_ip"] == 600   # 108600/164 → 662.2 → 600
         assert result["want_tk"] is True and result["want_ip"] is False
         assert result["rate_val"] == "500"
-        assert "500** руб./час на руки" in result["report"]
+        assert "500* руб./час на руки" in result["report"]
 
     def test_full_flow_nearest_lower_both(self) -> None:
         import asyncio
@@ -207,7 +207,7 @@ class TestCalculate:
         assert result["hourly_tk"] == 1100   # 190000/164 → 1158.5 → 1100
         assert result["hourly_ip"] == 1300   # 220000/164 → 1341.4 → 1300
         assert result["rate_val"] == "1100 / 1300"
-        assert "взята ближайшая меньшая ставка (**2400** руб/час)" in result["report"]
+        assert "взята ближайшая меньшая ставка (*2400* руб/час)" in result["report"]
 
     def test_no_db(self) -> None:
         import asyncio

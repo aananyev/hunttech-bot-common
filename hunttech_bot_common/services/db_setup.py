@@ -103,12 +103,12 @@ async def test_db_connection(
         await pool.close()
         return DbTestResult(
             success=True,
-            message=f"✅ **PostgreSQL подключён!**\n`{host}:{port}/{name}`",
+            message=f"✅ *PostgreSQL подключён!*\n`{host}:{port}/{name}`",
         )
     except Exception as e:
         return DbTestResult(
             success=False,
-            message=f"❌ **Ошибка подключения:** `{e}`",
+            message=f"❌ *Ошибка подключения:* `{e}`",
         )
 
 
@@ -135,15 +135,15 @@ def format_db_config(
         Markdown-formatted string.
     """
     if not host:
-        return "❌ **База данных не настроена.**\nИспользуйте `/setup db` для настройки."
+        return "❌ *База данных не настроена.*\nИспользуйте `/setup db` для настройки."
 
     lines = [
-        "🗄️ **Текущая конфигурация БД:**\n",
-        f"• **Хост:** `{host}`",
-        f"• **Порт:** `{port or 5432}`",
-        f"• **База:** `{name or '—'}`",
-        f"• **Пользователь:** `{user or '—'}`",
-        f"• **Пароль:** `{masked_password}`",
+        "🗄️ *Текущая конфигурация БД:*\n",
+        f"• *Хост:* `{host}`",
+        f"• *Порт:* `{port or 5432}`",
+        f"• *База:* `{name or '—'}`",
+        f"• *Пользователь:* `{user or '—'}`",
+        f"• *Пароль:* `{masked_password}`",
     ]
     return "\n".join(lines)
 

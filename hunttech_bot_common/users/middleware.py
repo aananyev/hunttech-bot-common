@@ -45,7 +45,7 @@ class AccessControlMiddleware:
         """
         self._get_am = get_access_manager
         self._block_message = block_message or (
-            "🚫 **Доступ запрещён**\n\n"
+            "🚫 *Доступ запрещён*\n\n"
             "У вас нет доступа к этому боту.\n"
             "Отправьте `/start` чтобы запросить доступ у администратора."
         )

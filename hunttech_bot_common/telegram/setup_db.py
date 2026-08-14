@@ -91,7 +91,7 @@ async def cmd_setup_db(
     user_id = message.from_user.id
 
     if not access_manager or not access_manager.is_admin(user_id):
-        await message.answer("\U0001f6ab **\u041a\u043e\u043c\u0430\u043d\u0434\u0430 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0443.**")
+        await message.answer("\U0001f6ab *\u041a\u043e\u043c\u0430\u043d\u0434\u0430 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0443.*")
         return
 
     args = (command.args or "").strip().lower()
@@ -121,7 +121,7 @@ async def cmd_setup_db(
 
         await message.answer(
             f"{display}\n\n"
-            "\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE-URL** \u0434\u043b\u044f \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u043a PostgreSQL.\n\n"
+            "\U0001f4dd *\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE-URL* \u0434\u043b\u044f \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u043a PostgreSQL.\n\n"
             "\u0424\u043e\u0440\u043c\u0430\u0442:\n"
             f"`{url_example}`\n\n"
             "\u0414\u043b\u044f \u0443\u0434\u0430\u043b\u0451\u043d\u043d\u043e\u0433\u043e \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0443\u043a\u0430\u0436\u0438\u0442\u0435 \u0445\u043e\u0441\u0442 \u0438 \u043f\u043e\u0440\u0442.\n"
@@ -134,7 +134,7 @@ async def cmd_setup_db(
 
     # Unknown subcommand
     await message.answer(
-        "\U0001f6ab **\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u0430\u044f \u043f\u043e\u0434\u043a\u043e\u043c\u0430\u043d\u0434\u0430.**\n\n"
+        "\U0001f6ab *\u041d\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043d\u0430\u044f \u043f\u043e\u0434\u043a\u043e\u043c\u0430\u043d\u0434\u0430.*\n\n"
         "\u0414\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0435 \u043a\u043e\u043c\u0430\u043d\u0434\u044b:\n"
         "\u2022 `/setup db` \u2014 \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f \u043a \u0411\u0414\n"
         "\u2022 `/setup db test` \u2014 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435\n"
@@ -153,7 +153,7 @@ async def _cmd_db_show(message: Message, config_service: DbConfigService) -> Non
     if config:
         text = (
             f"{display}\n\n"
-            "\U0001f4cb **\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435:**\n"
+            "\U0001f4cb *\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435:*\n"
             "\u2022 `/setup db` \u2014 \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438\n"
             "\u2022 `/setup db test` \u2014 \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435"
         )
@@ -171,7 +171,7 @@ async def _cmd_db_test(message: Message, config_service: DbConfigService) -> Non
     config = config_service.load()
     if not config or not config.get("url"):
         await message.answer(
-            "\u274c **\u0411\u0430\u0437\u0430 \u0434\u0430\u043d\u043d\u044b\u0445 \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d\u0430.**\n"
+            "\u274c *\u0411\u0430\u0437\u0430 \u0434\u0430\u043d\u043d\u044b\u0445 \u043d\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d\u0430.*\n"
             "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 `/setup db` \u0434\u043b\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438."
         )
         return
@@ -184,7 +184,7 @@ async def _cmd_db_test(message: Message, config_service: DbConfigService) -> Non
         host_part = url.split("@")[1].split("/")[0]
 
     status_msg = await message.answer(
-        "\U0001f50c **\u0422\u0435\u0441\u0442\u0438\u0440\u0443\u044e \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0431\u0430\u0437\u0435 \u0434\u0430\u043d\u043d\u044b\u0445...**\n"
+        "\U0001f50c *\u0422\u0435\u0441\u0442\u0438\u0440\u0443\u044e \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0431\u0430\u0437\u0435 \u0434\u0430\u043d\u043d\u044b\u0445...*\n"
         f"\u0425\u043e\u0441\u0442: {host_part}\n"
         f"SSL: {sslmode}\n\n"
         "\u23f3 \u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u043f\u043e\u0434\u043e\u0436\u0434\u0438\u0442\u0435..."
@@ -202,19 +202,19 @@ async def _cmd_db_test(message: Message, config_service: DbConfigService) -> Non
         if health.get("status") == "connected":
             latency = health.get("latency_ms", "?")
             result_text = (
-                "\u2705 **\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0443\u0441\u043f\u0435\u0448\u043d\u043e!**\n\n"
+                "\u2705 *\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0443\u0441\u043f\u0435\u0448\u043d\u043e!*\n\n"
                 f"\u2022 \u0421\u0442\u0430\u0442\u0443\u0441: {health['status']}\n"
                 f"\u2022 \u0417\u0430\u0434\u0435\u0440\u0436\u043a\u0430: {latency} \u043c\u0441"
             )
         else:
             result_text = (
-                f"\u26a0\ufe0f **\u0421\u0442\u0430\u0442\u0443\u0441: {health.get('status', 'unknown')}**\n"
+                f"\u26a0\ufe0f *\u0421\u0442\u0430\u0442\u0443\u0441: {health.get('status', 'unknown')}*\n"
                 f"\u041e\u0448\u0438\u0431\u043a\u0430: {health.get('error', 'unknown')}"
             )
     except Exception as e:
         logger.warning("DB connection test failed: %s", e)
         result_text = (
-            "\u274c **\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f:**\n"
+            "\u274c *\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f:*\n"
             f"`{e}`\n\n"
             "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435:\n"
             "\u2022 \u0414\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u043b\u0438 \u0445\u043e\u0441\u0442\n"
@@ -241,7 +241,7 @@ async def setup_db_url(message: Message, state: FSMContext) -> None:
             await state.set_state(SetupDbStates.pool_min)
             await message.answer(
                 "\u2705 URL \u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d \u0431\u0435\u0437 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439.\n\n"
-                "\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 минимальное количество соединений в пуле** "
+                "\U0001f4dd *\u0412\u0432\u0435\u0434\u0438\u0442\u0435 минимальное количество соединений в пуле* "
                 "(\u043f\u043e умолчанию 2, обычно 1\u20135):",
                 reply_markup=_cancel_kb(),
             )
@@ -250,7 +250,7 @@ async def setup_db_url(message: Message, state: FSMContext) -> None:
     if not text.startswith("postgresql://"):
         url_example = "postgresql://user:***@host:5432/db"
         await message.answer(
-            "\u274c **\u041d\u0435\u0432\u0435\u0440\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442.** "
+            "\u274c *\u041d\u0435\u0432\u0435\u0440\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442.* "
             "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 DATABASE-URL:\n\n"
             "\u0424\u043e\u0440\u043c\u0430\u0442:\n"
             f"`{url_example}`\n\n"
@@ -271,7 +271,7 @@ async def setup_db_url(message: Message, state: FSMContext) -> None:
     await state.set_state(SetupDbStates.pool_min)
     await message.answer(
         "\u2705 URL \u043f\u0440\u0438\u043d\u044f\u0442.\n\n"
-        "\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 минимальное количество соединений в пуле** "
+        "\U0001f4dd *\u0412\u0432\u0435\u0434\u0438\u0442\u0435 минимальное количество соединений в пуле* "
         "(\u043f\u043e умолчанию 2, обычно 1\u20135):",
         reply_markup=_cancel_kb(),
     )
@@ -288,7 +288,7 @@ async def setup_db_pool_min(message: Message, state: FSMContext) -> None:
         await state.set_state(SetupDbStates.pool_max)
         await message.answer(
             "\u2705 Min pool оставлен по умолчанию (2).\n\n"
-            "\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 максимальное количество соединений в пуле** "
+            "\U0001f4dd *\u0412\u0432\u0435\u0434\u0438\u0442\u0435 максимальное количество соединений в пуле* "
             "(\u043f\u043e умолчанию 10, обычно 5\u201320):",
             reply_markup=_cancel_kb(),
         )
@@ -302,7 +302,7 @@ async def setup_db_pool_min(message: Message, state: FSMContext) -> None:
         await state.set_state(SetupDbStates.pool_max)
         await message.answer(
             f"\u2705 Min pool: `{value}`.\n\n"
-            f"\U0001f4dd **\u0412\u0432\u0435\u0434\u0438\u0442\u0435 максимальное количество соединений в пуле** "
+            f"\U0001f4dd *\u0412\u0432\u0435\u0434\u0438\u0442\u0435 максимальное количество соединений в пуле* "
             f"(\u043f\u043e умолчанию 10, обычно 5\u201320):",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=_cancel_kb(),
@@ -327,8 +327,8 @@ async def setup_db_pool_max(message: Message, state: FSMContext) -> None:
         await state.set_state(SetupDbStates.sslmode)
         await message.answer(
             "\u2705 Max pool оставлен по умолчанию (10).\n\n"
-            "\U0001f512 **\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 режим SSL:**\n"
-            "\U0001f4a1 Для локальной PostgreSQL 11 без SSL выберите **disable** "
+            "\U0001f512 *\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 режим SSL:*\n"
+            "\U0001f4a1 Для локальной PostgreSQL 11 без SSL выберите *disable* "
             "(prefer/require падают с «rejected SSL upgrade»).",
             reply_markup=SSLMODE_KEYBOARD,
         )
@@ -353,7 +353,7 @@ async def setup_db_pool_max(message: Message, state: FSMContext) -> None:
         await state.set_state(SetupDbStates.sslmode)
         await message.answer(
             f"\u2705 Max pool: `{value}`.\n\n"
-            f"\U0001f512 **\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 режим SSL:**",
+            f"\U0001f512 *\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 режим SSL:*",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=SSLMODE_KEYBOARD,
         )
@@ -397,7 +397,7 @@ async def setup_db_sslmode(callback: CallbackQuery, state: FSMContext) -> None:
     masked_url = config_service._mask_db_url(url)
 
     preview = (
-        f"\U0001f50d **\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 конфигурацию:**\n\n"
+        f"\U0001f50d *\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 конфигурацию:*\n\n"
         f"\u2022 `URL`: `{masked_url}`\n"
         f"\u2022 `Min pool`: `{pool_min}`\n"
         f"\u2022 `Max pool`: `{pool_max}`\n"
@@ -423,7 +423,7 @@ async def setup_db_test(callback: CallbackQuery, state: FSMContext) -> None:
         host_part = url.split("@")[1].split("/")[0]
 
     await callback.message.edit_text(
-        "\U0001f50c **\u0422\u0435\u0441\u0442\u0438\u0440\u0443\u044e подключение к базе данных...**\n"
+        "\U0001f50c *\u0422\u0435\u0441\u0442\u0438\u0440\u0443\u044e подключение к базе данных...*\n"
         f"\u0425\u043e\u0441\u0442: {host_part}\n"
         f"SSL: {sslmode}\n\n"
         "\u23f3 \u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, подождите..."
@@ -442,7 +442,7 @@ async def setup_db_test(callback: CallbackQuery, state: FSMContext) -> None:
         if health.get("status") == "connected":
             latency = health.get("latency_ms", "?")
             result_text = (
-                "\u2705 **\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 успешно!**\n\n"
+                "\u2705 *\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 успешно!*\n\n"
                 f"\u2022 \u0421\u0442\u0430\u0442\u0443\u0441: {health['status']}\n"
                 f"\u2022 \u0417\u0430\u0434\u0435\u0440\u0436\u043a\u0430: {latency} \u043c\u0441\n"
                 f"\u2022 \u041f\u0443\u043b: {health.get('pool_stats', {})}\n\n"
@@ -450,14 +450,14 @@ async def setup_db_test(callback: CallbackQuery, state: FSMContext) -> None:
             )
         else:
             result_text = (
-                f"\u26a0\ufe0f **\u0421\u0442\u0430\u0442\u0443\u0441: {health.get('status', 'unknown')}**\n"
+                f"\u26a0\ufe0f *\u0421\u0442\u0430\u0442\u0443\u0441: {health.get('status', 'unknown')}*\n"
                 f"\u041e\u0448\u0438\u0431\u043a\u0430: {health.get('error', 'unknown')}"
                 "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 параметры подключения."
             )
     except Exception as e:
         logger.warning("DB connection test failed: %s", e)
         result_text = (
-            "\u274c **\u041e\u0448\u0438\u0431\u043a\u0430 подключения:**\n"
+            "\u274c *\u041e\u0448\u0438\u0431\u043a\u0430 подключения:*\n"
             f"`{e}`\n\n"
             "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435:\n"
             "\u2022 \u0414\u043e\u0441\u0442\u0443\u043f\u0435\u043d ли хост\n"
@@ -490,14 +490,14 @@ async def setup_db_save(callback: CallbackQuery, state: FSMContext) -> None:
 
     if config_service.save(config):
         await callback.message.edit_text(
-            "\u2705 **\u041a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044f \u0411\u0414 сохранена!**\n\n"
+            "\u2705 *\u041a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044f \u0411\u0414 сохранена!*\n\n"
             "\u0422\u0435\u043f\u0435\u0440\u044c все боты HuntTech будут использовать "
             "\u044d\u0442\u0438 настройки для подключения к базе данных.\n\n"
             "\u0414\u043b\u044f применения может потребоваться перезапуск бота."
         )
     else:
         await callback.message.edit_text(
-            "\u274c **\u041e\u0448\u0438\u0431\u043a\u0430 сохранения конфигурации.**\n"
+            "\u274c *\u041e\u0448\u0438\u0431\u043a\u0430 сохранения конфигурации.*\n"
             "\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 права на запись в директорию data/."
         )
 
@@ -509,7 +509,7 @@ async def setup_db_cancel(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await state.clear()
     await callback.message.edit_text(
-        "\u274c **\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u0411\u0414 отменена.**\n"
+        "\u274c *\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u0411\u0414 отменена.*\n"
         "\u0422\u0435\u043a\u0443\u0449\u0430\u044f конфигурация не изменена."
     )
 

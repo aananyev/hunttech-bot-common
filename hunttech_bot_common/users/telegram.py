@@ -43,49 +43,49 @@ logger = logging.getLogger(__name__)
 # ── Constants ───────────────────────────────────────────────────
 
 ACCESS_DENIED_TEXT = (
-    "🚫 **Доступ запрещён**\n\n"
+    "🚫 *Доступ запрещён*\n\n"
     "У вас нет доступа к этому боту.\n"
     "Отправьте `/request_access` чтобы запросить доступ у администратора."
 )
 
 ACCESS_REQUEST_SENT_TEXT = (
-    "✅ **Запрос отправлен!**\n\n"
+    "✅ *Запрос отправлен!*\n\n"
     "Администратор получил уведомление о вашем запросе.\n"
     "Пожалуйста, ожидайте — как только доступ будет предоставлен, "
     "вы получите уведомление."
 )
 
 ACCESS_GRANTED_TEXT = (
-    "🎉 **Доступ предоставлен!**\n\n"
+    "🎉 *Доступ предоставлен!*\n\n"
     "Теперь вы можете пользоваться ботом.\n"
     "Отправьте `/help` чтобы увидеть список доступных команд."
 )
 
 ACCESS_ALREADY_GRANTED_TEXT = (
-    "✅ **У вас уже есть доступ к этому боту.**\n\n"
+    "✅ *У вас уже есть доступ к этому боту.*\n\n"
     "Отправьте `/help` чтобы увидеть список доступных команд."
 )
 
 PENDING_REQUEST_TEXT = (
-    "⏳ **Запрос уже отправлен.**\n\n"
+    "⏳ *Запрос уже отправлен.*\n\n"
     "Ваш запрос на доступ к боту всё ещё находится на рассмотрении.\n"
     "Пожалуйста, ожидайте."
 )
 
 DENIED_REQUEST_TEXT = (
-    "❌ **Запрос на доступ отклонён.**\n\n"
+    "❌ *Запрос на доступ отклонён.*\n\n"
     "Администратор отклонил ваш запрос.\n"
     "Если это ошибка — обратитесь к администратору напрямую."
 )
 
 INVITATION_TEXT = (
-    "📨 **Вас пригласили в бота!**\n\n"
+    "📨 *Вас пригласили в бота!*\n\n"
     "Администратор предоставил вам доступ к боту.\n"
     "Отправьте `/start` чтобы начать использование."
 )
 
 ACCESS_REVOKED_TEXT = (
-    "🚫 **Доступ к боту отозван.**\n\n"
+    "🚫 *Доступ к боту отозван.*\n\n"
     "Администратор отключил вас от бота.\n"
     "Если это ошибка — обратитесь к администратору."
 )
@@ -174,7 +174,7 @@ async def start_access_gate(
     # Check if admin
     if access_manager.is_admin(user_id):
         text = welcome_text or (
-            "👑 **Добро пожаловать, администратор!**\n\n"
+            "👑 *Добро пожаловать, администратор!*\n\n"
             "Вы имеете полный доступ к боту.\n"
             f"Используйте `/help` для списка команд.\n"
             f"Управление пользователями: `/user list`"
@@ -185,7 +185,7 @@ async def start_access_gate(
     # Check if already allowed
     if access_manager.is_allowed(user_id):
         text = welcome_text or (
-            "👋 **С возвращением!**\n\n"
+            "👋 *С возвращением!*\n\n"
             "Ваш доступ активен.\n"
             "Используйте `/help` для списка команд."
         )
@@ -365,7 +365,7 @@ async def admin_approval_callback(
     # Check that the clicker is actually admin
     if not access_manager.is_admin(admin_id):
         await callback.message.edit_text(
-            "❌ **Недостаточно прав.**\n"
+            "❌ *Недостаточно прав.*\n"
             "Только администратор может управлять доступом.",
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -373,7 +373,7 @@ async def admin_approval_callback(
 
     parts = callback.data.split(":")
     if len(parts) < 3:
-        await callback.message.edit_text("❌ **Некорректные данные.**", parse_mode=ParseMode.MARKDOWN)
+        await callback.message.edit_text("❌ *Некорректные данные.*", parse_mode=ParseMode.MARKDOWN)
         return
 
     action = parts[1]
@@ -386,7 +386,7 @@ async def admin_approval_callback(
         if user_info:
             # User already existed (e.g., re-added)
             await callback.message.edit_text(
-                f"✅ **Пользователь уже имеет доступ.**\n"
+                f"✅ *Пользователь уже имеет доступ.*\n"
                 f"🆔 `{target_user_id}`",
                 parse_mode=ParseMode.MARKDOWN,
             )
@@ -405,7 +405,7 @@ async def admin_approval_callback(
         mention = f'<a href="tg://user?id={target_user_id}">{escape_html(display_name)}</a>'
 
         await callback.message.edit_text(
-            f"✅ **Доступ предоставлен!**\n"
+            f"✅ *Доступ предоставлен!*\n"
             f"Пользователь {mention}\n"
             f"🆔 `{target_user_id}`\n\n"
             f"Пользователь получит уведомление.",
@@ -452,7 +452,7 @@ async def admin_approval_callback(
                 break
 
         await callback.message.edit_text(
-            f"❌ **Доступ отклонён** для `{target_user_id}` "
+            f"❌ *Доступ отклонён* для `{target_user_id}` "
             f"({display_name}).",
             parse_mode=ParseMode.MARKDOWN,
         )
@@ -561,7 +561,7 @@ async def user_list_handler(
     lines: list[str] = []
 
     if pending:
-        lines.append("⏳ **Ожидают подтверждения:**")
+        lines.append("⏳ *Ожидают подтверждения:*")
         for req in pending:
             if req.get("status") == "pending":
                 name = req.get("full_name") or req.get("username") or f"User#{req['user_id']}"
@@ -571,18 +571,18 @@ async def user_list_handler(
         lines.append("")
 
     if users:
-        lines.append("👥 **Разрешённые пользователи:**")
+        lines.append("👥 *Разрешённые пользователи:*")
         for u in users:
             name = u.get("full_name") or u.get("username") or f"User#{u['user_id']}"
             banned = " 🚫" if u.get("is_banned") else ""
             lines.append(f"  • `{u['user_id']}` — {escape_md_simple(name)}{banned}")
 
         lines.append("")
-        lines.append(f"👑 **Администраторы:** `{access_manager.get_admin_ids()}`")
+        lines.append(f"👑 *Администраторы:* `{access_manager.get_admin_ids()}`")
     else:
-        lines.append("📭 **Нет разрешённых пользователей.**")
+        lines.append("📭 *Нет разрешённых пользователей.*")
         lines.append("")
-        lines.append(f"👑 **Администраторы:** `{access_manager.get_admin_ids()}`")
+        lines.append(f"👑 *Администраторы:* `{access_manager.get_admin_ids()}`")
 
     text = "\n".join(lines)
 
@@ -645,14 +645,14 @@ async def user_delete_callback(
             pass
 
         await callback.message.edit_text(
-            f"✅ **Пользователь `{target_user_id}` удалён.**\n"
+            f"✅ *Пользователь `{target_user_id}` удалён.*\n"
             f"Уведомление отправлено.\n\n"
             f"ℹ️ Обновите список: `/user list`",
             parse_mode=ParseMode.MARKDOWN,
         )
     else:
         await callback.message.edit_text(
-            f"❌ **Пользователь `{target_user_id}` не найден.**",
+            f"❌ *Пользователь `{target_user_id}` не найден.*",
             parse_mode=ParseMode.MARKDOWN,
         )
 
@@ -700,13 +700,13 @@ async def access_callback_handler(
             # Already allowed or no request
             if access_manager.is_allowed(user_id):
                 await callback.message.edit_text(
-                    "✅ **У вас уже есть доступ к боту.**\n\n"
+                    "✅ *У вас уже есть доступ к боту.*\n\n"
                     "Используйте `/start` чтобы начать.",
                     parse_mode=ParseMode.MARKDOWN,
                 )
             else:
                 await callback.message.edit_text(
-                    "❌ **Запрос не найден.**\n\n"
+                    "❌ *Запрос не найден.*\n\n"
                     "Отправьте `/request_access` чтобы запросить доступ.",
                     parse_mode=ParseMode.MARKDOWN,
                 )

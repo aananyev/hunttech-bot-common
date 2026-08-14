@@ -177,14 +177,14 @@ class DbConfigService:
             config = self.load()
 
         if not config:
-            return "❌ **База данных не настроена.**\nИспользуйте `/setup db` для настройки."
+            return "❌ *База данных не настроена.*\nИспользуйте `/setup db` для настройки."
 
         url = config.get("url", "")
         # Mask password in URL
         masked_url = self._mask_db_url(url)
 
         lines = [
-            "🗄️ **Текущая конфигурация БД:**\n",
+            "🗄️ *Текущая конфигурация БД:*\n",
             f"• `URL`: `{masked_url}`",
             f"• `Min pool`: `{config.get('pool_min', 2)}`",
             f"• `Max pool`: `{config.get('pool_max', 10)}`",
