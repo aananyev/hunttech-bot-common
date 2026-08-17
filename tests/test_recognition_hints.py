@@ -329,3 +329,63 @@ def test_contract_filename_still_contract_with_notice_marker() -> None:
     # в имени файла первым словом — CONTRACT (маркер «договор» по \b-границе
     # в начале head не сработает только если «уведомлени» встретился раньше).
     assert _infer_document_type("Договор_аренды_2026.pdf") == "CONTRACT"
+
+
+# ─── ORDER / PROTOCOL / LETTER (приказ / протокол / письмо) ───
+
+ORDER_TEXT = """\
+Приказ о приеме на работу № 7 от 01.08.2026
+ООО «ХАНТТЕК»
+Принять Иванова Ивана Ивановича на должность менеджера с 01.08.2026.
+"""
+
+PROTOCOL_TEXT = """\
+Протокол собрания участников № 3 от 15.08.2026
+ООО «ХАНТТЕК»
+Повестка дня: утверждение годового отчёта.
+"""
+
+LETTER_TEXT = """\
+Письмо о расторжении договора № 14 от 01.08.2026
+ООО «ХАНТТЕК»
+В связи с окончанием срока действия Договора № 14 от 01.01.2026 просим считать
+договор расторгнутым с 01.09.2026.
+"""
+
+
+def test_order_from_title_not_contract() -> None:
+    """«Приказ о приеме на работу» — ORDER, а не CONTRACT/заявление."""
+    out = _apply_text_hints(_base({"document_type": "CONTRACT"}), ORDER_TEXT)
+    assert out["document_type"] == "ORDER"
+    assert out["flow_type"] == "PRIMARY"
+
+
+def test_protocol_from_title() -> None:
+    out = _apply_text_hints(_base({"document_type": ""}), PROTOCOL_TEXT)
+    assert out["document_type"] == "PROTOCOL"
+
+
+def test_letter_referencing_contract_is_letter() -> None:
+    """«Письмо о расторжении договора» — LETTER, а не CONTRACT."""
+    out = _apply_text_hints(_base({"document_type": "CONTRACT"}), LETTER_TEXT)
+    assert out["document_type"] == "LETTER"
+
+
+def test_order_protocol_letter_survive_hints_when_llm_weak() -> None:
+    for text, expected in ((ORDER_TEXT, "ORDER"), (PROTOCOL_TEXT, "PROTOCOL"), (LETTER_TEXT, "LETTER")):
+        for llm_type in ("OTHER", "UNKNOWN", ""):
+            out = _apply_text_hints(_base({"document_type": llm_type}), text)
+            assert out["document_type"] == expected, f"LLM={llm_type!r} → {out['document_type']}"
+
+
+def test_contract_with_order_reference_stays_contract() -> None:
+    # Договор может упоминать приказ как основание — тип остаётся CONTRACT.
+    text = CONTRACT_TEXT + "\nИсполнитель действует на основании приказа № 3 от 01.01.2026."
+    out = _apply_text_hints(_base({"document_type": "CONTRACT"}), text)
+    assert out["document_type"] == "CONTRACT"
+
+
+def test_order_protocol_letter_filename_hint() -> None:
+    assert _infer_document_type("Приказ_о_приеме_на_работу_Иванов.pdf") == "ORDER"
+    assert _infer_document_type("Протокол_собрания_учредителей_2026.pdf") == "PROTOCOL"
+    assert _infer_document_type("2026-08-01 Письмо о расторжении договора.pdf") == "LETTER"

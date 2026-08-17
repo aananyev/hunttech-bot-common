@@ -74,20 +74,39 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
     # «Заявление»/«Уведомление» — ОТДЕЛЬНЫЕ типы документов (APPLICATION/NOTICE):
     # уведомление о расторжении договора — это уведомление, а не договор. Хинт по
     # обороту перебивает слабые/неверные ответы LLM (OTHER/UNKNOWN/пустое), но НЕ
-    # трогает договоры/допсоглашения/отчёты/решения/акты сверки/акты/УПД/счета/чеки,
-    # где слово может встречаться в тексте (заголовок обрабатывается в
-    # _apply_title_hints и перебивает безусловно).
+    # трогает сильные типы, где слово может встречаться в тексте (заголовок
+    # обрабатывается в _apply_title_hints и перебивает безусловно).
     if (
         "уведомлени" in lowered or "заявлени" in lowered
     ) and normalized.get("document_type") not in (
         "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION", "RECONCILIATION",
-        "ACT", "UPD", "INVOICE", "RECEIPT",
+        "ACT", "UPD", "INVOICE", "RECEIPT", "TASK", "ORDER", "PROTOCOL", "LETTER",
     ):
         doc_type = "NOTICE" if "уведомлени" in lowered else "APPLICATION"
         normalized["document_type"] = doc_type
         normalized["flow_type"] = "PRIMARY"
         normalized.pop("receipt_organization", None)
         logger.info("text_hints: notice/application phrases → %s", doc_type)
+    # «Приказ»/«Протокол»/«Письмо» — ОТДЕЛЬНЫЕ типы документов (ORDER/PROTOCOL/LETTER):
+    # приказ о расторжении договора — это приказ, письмо со ссылкой на договор —
+    # письмо. Перебивают только слабые ответы LLM, сильные типы не трогают.
+    if (
+        "приказ" in lowered or "протокол" in lowered or "письм" in lowered
+    ) and normalized.get("document_type") not in (
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION", "RECONCILIATION",
+        "ACT", "UPD", "INVOICE", "RECEIPT", "TASK", "APPLICATION", "NOTICE",
+        "ORDER", "PROTOCOL", "LETTER",
+    ):
+        if "приказ" in lowered:
+            doc_type = "ORDER"
+        elif "протокол" in lowered:
+            doc_type = "PROTOCOL"
+        else:
+            doc_type = "LETTER"
+        normalized["document_type"] = doc_type
+        normalized["flow_type"] = "PRIMARY"
+        normalized.pop("receipt_organization", None)
+        logger.info("text_hints: order/protocol/letter phrases → %s", doc_type)
     if _looks_like_receipt(text):
         normalized["document_type"] = "RECEIPT"
         normalized["flow_type"] = "ADVANCE_REPORT"
@@ -174,6 +193,9 @@ def _apply_title_hints(normalized: dict[str, Any], title: str) -> None:
         ("решение", "DECISION"),
         ("заявлени", "APPLICATION"),
         ("уведомлени", "NOTICE"),
+        ("письм", "LETTER"),
+        ("приказ", "ORDER"),
+        ("протокол", "PROTOCOL"),
     ]
     for marker, doc_type in title_markers:
         if title.startswith(marker):
@@ -535,6 +557,15 @@ def _normalize_result(data: dict[str, Any], *, hint_text: str = "") -> dict[str,
             "notice": "NOTICE",
             "уведомление": "NOTICE",
             "уведомлени": "NOTICE",
+            "order": "ORDER",
+            "приказ": "ORDER",
+            "prikaz": "ORDER",
+            "protocol": "PROTOCOL",
+            "протокол": "PROTOCOL",
+            "protokol": "PROTOCOL",
+            "letter": "LETTER",
+            "письмо": "LETTER",
+            "письм": "LETTER",
             "upd": "UPD",
             "упд": "UPD",
             "invoice": "INVOICE",
@@ -613,10 +644,19 @@ def _infer_document_type(text: str) -> str:
         ("решени", "DECISION"),
         ("reshenie", "DECISION"),
         ("decision", "DECISION"),
-        # «Заявление»/«Уведомление» — ОТДЕЛЬНЫЕ типы (APPLICATION/NOTICE): маркер ДО
-        # «договор», иначе «Уведомление о расторжении договора» дало бы CONTRACT.
+        # «Заявление»/«Уведомление»/«Письмо»/«Приказ»/«Протокол» — ОТДЕЛЬНЫЕ типы
+        # (APPLICATION/NOTICE/LETTER/ORDER/PROTOCOL): маркер ДО «договор», иначе
+        # «Уведомление о расторжении договора» дало бы CONTRACT.
         ("заявлени", "APPLICATION"),
         ("уведомлени", "NOTICE"),
+        ("письм", "LETTER"),
+        ("letter", "LETTER"),
+        ("приказ", "ORDER"),
+        ("prikaz", "ORDER"),
+        ("order", "ORDER"),
+        ("протокол", "PROTOCOL"),
+        ("protokol", "PROTOCOL"),
+        ("protocol", "PROTOCOL"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
@@ -646,6 +686,14 @@ def _infer_document_type(text: str) -> str:
         ("decision", "DECISION"),
         ("заявлени", "APPLICATION"),
         ("уведомлени", "NOTICE"),
+        ("письм", "LETTER"),
+        ("letter", "LETTER"),
+        ("приказ", "ORDER"),
+        ("prikaz", "ORDER"),
+        ("order", "ORDER"),
+        ("протокол", "PROTOCOL"),
+        ("protokol", "PROTOCOL"),
+        ("protocol", "PROTOCOL"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
