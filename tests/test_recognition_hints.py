@@ -273,3 +273,59 @@ def test_act_still_detected_without_sverka() -> None:
     act_text = "Акт выполненных работ № 12 от 01.06.2026\nЗаказчик: ООО ХАНТТЕК\nИсполнитель: ИП Иванов"
     out = _apply_text_hints(_base({"document_type": ""}), act_text)
     assert out["document_type"] == "ACT"
+
+
+# ─── APPLICATION / NOTICE (заявление / уведомление) ───
+
+NOTICE_TEXT = """\
+Уведомление о расторжении договора возмездного оказания услуг № 14 от 01.08.2026
+ООО «ХАНТТЕК» ИНН 6455073518
+В соответствии с п. 5.2 Договора № 14 от 01.01.2026 уведомляем о расторжении.
+"""
+
+APPLICATION_TEXT = """\
+Заявление на отпуск
+ООО «ХАНТТЕК»
+Прошу предоставить ежегодный оплачиваемый отпуск с 01.09.2026.
+"""
+
+
+def test_notice_from_title_not_contract() -> None:
+    """«Уведомление о расторжении договора» — NOTICE, а не CONTRACT:
+    уведомление — отдельный тип документа, даже если в тексте упомянут договор."""
+    out = _apply_text_hints(_base({"document_type": "CONTRACT"}), NOTICE_TEXT)
+    assert out["document_type"] == "NOTICE"
+    assert out["flow_type"] == "PRIMARY"
+
+
+def test_application_from_title() -> None:
+    out = _apply_text_hints(_base({"document_type": ""}), APPLICATION_TEXT)
+    assert out["document_type"] == "APPLICATION"
+    assert out["flow_type"] == "PRIMARY"
+
+
+def test_notice_survives_hints_when_llm_weak() -> None:
+    for llm_type in ("OTHER", "UNKNOWN", "", "ACT"):
+        out = _apply_text_hints(_base({"document_type": llm_type}), NOTICE_TEXT)
+        assert out["document_type"] == "NOTICE", f"LLM={llm_type!r} → {out['document_type']}"
+
+
+def test_contract_with_notice_clause_stays_contract() -> None:
+    # Договор может содержать пункт про уведомления — тип остаётся CONTRACT.
+    text = CONTRACT_TEXT + "\n5.2. Стороны направляют друг другу уведомления по e-mail."
+    out = _apply_text_hints(_base({"document_type": "CONTRACT"}), text)
+    assert out["document_type"] == "CONTRACT"
+
+
+def test_application_and_notice_filename_hint() -> None:
+    assert _infer_document_type("2026-08-01 Уведомление о расторжении договора.pdf") == "NOTICE"
+    assert _infer_document_type("Уведомление_о_сокращении_Иванов.pdf") == "NOTICE"
+    assert _infer_document_type("Заявление на отпуск Ананьев.pdf") == "APPLICATION"
+    assert _infer_document_type("Заявление_о_приеме_на_работу.pdf") == "APPLICATION"
+
+
+def test_contract_filename_still_contract_with_notice_marker() -> None:
+    # Маркеры «уведомлени»/«заявлени» идут ДО «договор», но сам договор
+    # в имени файла первым словом — CONTRACT (маркер «договор» по \b-границе
+    # в начале head не сработает только если «уведомлени» встретился раньше).
+    assert _infer_document_type("Договор_аренды_2026.pdf") == "CONTRACT"

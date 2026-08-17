@@ -71,6 +71,23 @@ def _apply_text_hints(data: dict[str, Any], text: str) -> dict[str, Any]:
         normalized["flow_type"] = "PRIMARY"
         normalized.pop("receipt_organization", None)
         logger.info("text_hints: reconciliation phrases → RECONCILIATION")
+    # «Заявление»/«Уведомление» — ОТДЕЛЬНЫЕ типы документов (APPLICATION/NOTICE):
+    # уведомление о расторжении договора — это уведомление, а не договор. Хинт по
+    # обороту перебивает слабые/неверные ответы LLM (OTHER/UNKNOWN/пустое), но НЕ
+    # трогает договоры/допсоглашения/отчёты/решения/акты сверки/акты/УПД/счета/чеки,
+    # где слово может встречаться в тексте (заголовок обрабатывается в
+    # _apply_title_hints и перебивает безусловно).
+    if (
+        "уведомлени" in lowered or "заявлени" in lowered
+    ) and normalized.get("document_type") not in (
+        "CONTRACT", "ADDITIONAL_AGREEMENT", "REPORT", "DECISION", "RECONCILIATION",
+        "ACT", "UPD", "INVOICE", "RECEIPT",
+    ):
+        doc_type = "NOTICE" if "уведомлени" in lowered else "APPLICATION"
+        normalized["document_type"] = doc_type
+        normalized["flow_type"] = "PRIMARY"
+        normalized.pop("receipt_organization", None)
+        logger.info("text_hints: notice/application phrases → %s", doc_type)
     if _looks_like_receipt(text):
         normalized["document_type"] = "RECEIPT"
         normalized["flow_type"] = "ADVANCE_REPORT"
@@ -155,6 +172,8 @@ def _apply_title_hints(normalized: dict[str, Any], title: str) -> None:
         ("акт сверки", "RECONCILIATION"),
         ("акт", "ACT"),
         ("решение", "DECISION"),
+        ("заявлени", "APPLICATION"),
+        ("уведомлени", "NOTICE"),
     ]
     for marker, doc_type in title_markers:
         if title.startswith(marker):
@@ -510,6 +529,12 @@ def _normalize_result(data: dict[str, Any], *, hint_text: str = "") -> dict[str,
             "отчёт": "REPORT",
             "act": "ACT",
             "акт": "ACT",
+            "application": "APPLICATION",
+            "заявление": "APPLICATION",
+            "заявлени": "APPLICATION",
+            "notice": "NOTICE",
+            "уведомление": "NOTICE",
+            "уведомлени": "NOTICE",
             "upd": "UPD",
             "упд": "UPD",
             "invoice": "INVOICE",
@@ -588,6 +613,10 @@ def _infer_document_type(text: str) -> str:
         ("решени", "DECISION"),
         ("reshenie", "DECISION"),
         ("decision", "DECISION"),
+        # «Заявление»/«Уведомление» — ОТДЕЛЬНЫЕ типы (APPLICATION/NOTICE): маркер ДО
+        # «договор», иначе «Уведомление о расторжении договора» дало бы CONTRACT.
+        ("заявлени", "APPLICATION"),
+        ("уведомлени", "NOTICE"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
@@ -615,6 +644,8 @@ def _infer_document_type(text: str) -> str:
         ("решени", "DECISION"),
         ("reshenie", "DECISION"),
         ("decision", "DECISION"),
+        ("заявлени", "APPLICATION"),
+        ("уведомлени", "NOTICE"),
         ("договор", "CONTRACT"),
         ("dogovor", "CONTRACT"),
         ("contract", "CONTRACT"),
