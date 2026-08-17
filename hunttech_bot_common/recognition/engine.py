@@ -12,6 +12,14 @@ from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
+# PDF с извлечённым текстом короче этого порога считается «тонким текстовым
+# слоем» (например, чек check.yandex.ru: в тексте только «Чек» + URL + футер
+# браузера «1 of 1», а реквизиты — картинкой внутри PDF). Для таких PDF
+# извлечённый текст бесполезен — добавляем OCR рендера первой страницы
+# (кейс 17.08.2026, запись 98edfabb0660-2265: контрагент и сумма не
+# распознались из мусорного слоя).
+_PDF_TEXT_MIN_CHARS = 200
+
 try:
     from agent.plugin_llm import PluginLlmTextInput
 except Exception:
@@ -43,7 +51,7 @@ def recognize_document(
     ai_parse, done). The callback runs in the calling thread — use
     ``asyncio.run_coroutine_threadsafe`` from async callers.
     """
-    settings = settings or load_settings()
+    settings = settings or None
     _emit(progress_callback, "mime_detect", "Определяю тип файла...")
     mime_type = _guess_mime(path)
     if _is_supported_image(mime_type):
@@ -51,8 +59,22 @@ def recognize_document(
 
     _emit(progress_callback, "extract_text", "Извлекаю текст из документа...")
     extracted_text = _extract_text(path, mime_type)
-    if _is_pdf(mime_type, path) and not extracted_text.strip():
-        return _recognize_pdf_scan(llm, path, caption=caption, original_name=original_name, settings=settings, progress_callback=progress_callback)
+    if _is_pdf(mime_type, path):
+        if not extracted_text.strip():
+            return _recognize_pdf_scan(llm, path, caption=caption, original_name=original_name, settings=settings, progress_callback=progress_callback)
+        if len(extracted_text.strip()) < _PDF_TEXT_MIN_CHARS:
+            # Тонкий текстовый слой: извлечённого текста мало (обычно это
+            # заголовок/URL/футер печати, а содержимое — картинкой). Доснимаем
+            # OCR рендера и склеиваем оба текста для LLM.
+            return _recognize_pdf_mixed(
+                llm,
+                path,
+                extracted_text,
+                caption=caption,
+                original_name=original_name,
+                settings=settings,
+                progress_callback=progress_callback,
+            )
 
     result = _recognize_text_document(
         llm,
@@ -214,6 +236,47 @@ def _recognize_pdf_scan(
             settings=settings,
             progress_callback=progress_callback,
         )
+
+def _recognize_pdf_mixed(
+    llm: Any,
+    path: Path,
+    extracted_text: str,
+    *,
+    caption: str = "",
+    original_name: str = "",
+    settings: Any,
+    progress_callback: Callable[[str, str], None] | None = None,
+) -> RecognitionResult:
+    """PDF с тонким текстовым слоем: OCR рендера + извлечённый текст.
+
+    Текстовый слой в таких PDF (чек check.yandex.ru и т.п.) содержит только
+    заголовок/URL/футер печати, а реквизиты — картинкой. Извлечённого текста
+    мало — распознаём рендер страницы через OCR и склеиваем с текстовым слоем,
+    чтобы LLM получил и содержимое, и подсказку из слоя.
+    """
+    _emit(progress_callback, "ocr_scan", "PDF с тонким текстовым слоем — добавляю OCR страницы...")
+    with tempfile.TemporaryDirectory(prefix="hunttech-docs-pdf-") as temp_dir:
+        rendered = _render_first_pdf_page(path, Path(temp_dir))
+        ocr_text, ocr_provider, ocr_model = _recognize_image_text(
+            rendered, "image/jpeg", settings, progress_callback=progress_callback
+        )
+    combined = _combine_pdf_texts(extracted_text, ocr_text)
+    return _recognize_text_document(
+        llm,
+        path,
+        "application/pdf",
+        extracted_text=combined,
+        caption=caption,
+        original_name=original_name,
+        source_provider=ocr_provider,
+        source_model=ocr_model,
+        progress_callback=progress_callback,
+    )
+
+def _combine_pdf_texts(extracted_text: str, ocr_text: str) -> str:
+    """Склейка текстового слоя и OCR-текста PDF (OCR-текст — основной)."""
+    parts = [part.strip() for part in (ocr_text, extracted_text) if part and part.strip()]
+    return "\n".join(parts)
 
 def _render_first_pdf_page(path: Path, temp_dir: Path) -> Path:
     pdftoppm = shutil.which("pdftoppm")
