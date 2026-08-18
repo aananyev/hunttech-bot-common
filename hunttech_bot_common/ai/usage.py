@@ -363,6 +363,18 @@ def usage_period_from_args(args: list[str] | None) -> str:
     return "day"
 
 
+def _plural(n: int, one: str, few: str, many: str) -> str:
+    """Русская плюрализация: 1 запрос, 2 запроса, 5 запросов."""
+    n10, n100 = n % 10, n % 100
+    if 10 <= n100 <= 20:
+        return many
+    if n10 == 1:
+        return one
+    if 2 <= n10 <= 4:
+        return few
+    return many
+
+
 def format_usage_report(
     tracker: UsageTracker,
     period: str = "day",
@@ -377,13 +389,16 @@ def format_usage_report(
     t = s["totals"]
     title = bot_name or "HuntTech-боты"
 
+    req_word = _plural(t["requests"], "запрос", "запроса", "запросов")
+    err_word = _plural(t["error_requests"], "ошибка", "ошибки", "ошибок")
+
     lines = [
         f"💰 Расходы на нейросеть — {title}",
         f"Период: {_period_label(period)}",
         "━━━━━━━━━━━━━━━━━━━━━━",
-        (f"ИТОГО: {_fmt_int(t['requests'])} запросов"
+        (f"ИТОГО: {_fmt_int(t['requests'])} {req_word}"
          f" ({_fmt_int(t['ok_requests'])} ok /"
-         f" {_fmt_int(t['error_requests'])} ошибок)"),
+         f" {_fmt_int(t['error_requests'])} {err_word})"),
         (f"Токены: {_fmt_tokens(t['total_tokens'])}"
          f" (вход {_fmt_tokens(t['prompt_tokens'])} /"
          f" выход {_fmt_tokens(t['completion_tokens'])})"),

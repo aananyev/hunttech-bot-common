@@ -341,9 +341,11 @@ class MockAIClient:
         max_tokens: int | None = None,
         timeout: float | None = None,
         extra_body: dict[str, Any] | None = None,
+        task: str | None = None,
     ) -> AIResponse:
         """Return a mock response immediately."""
         _ = system_prompt, user_prompt, temperature, max_tokens, timeout, extra_body  # mark as used
+        _ = task  # совместимость с сигнатурой AIClient.complete (учёт 0.6.0)
         content = self.response_text
         if response_schema is not None:
             try:
