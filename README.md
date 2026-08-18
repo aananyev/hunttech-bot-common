@@ -57,7 +57,10 @@ print(response.content)
 
 ## Modules
 
-- **ai** - OpenAI-compatible async AI client with retry logic
+- **ai** - OpenAI-compatible async AI client with retry logic + **учёт обращений
+  к нейросети** (`ai.usage`): общий реестр токенов/стоимости всех ботов
+  (`~/.hermes/hunttech_bots/ai_usage.json`), прайсинг по моделям,
+  отчёт `/usage` в разрезе модели/пользователя/задачи/провайдера)
 - **config** - Environment-based configuration management
 - **telegram** - Telegram bot utilities (commands, escaping, callbacks)
 - **files** - File handling, validation, and temporary directories

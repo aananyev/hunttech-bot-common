@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0 (2026-08-18)
+
+### Added
+- **Учёт обращений всех ботов к нейросети** (`ai.usage`): `UsageTracker`
+  — общий реестр в `~/.hermes/hunttech_bots/ai_usage.json` (атомарная
+  запись, trim до `max_records`, устойчивость к битому файлу), `UsageRecord`,
+  прайсинг `estimate_cost` (deepseek-chat/v4-flash/reasoner, gpt-4o/mini,
+  claude, gemini; неизвестные модели → $0), `format_usage_report` — отчёт
+  для команды `/usage` в разрезе модели, пользователя, задачи, провайдера
+  и по дням; `usage_period_from_args` (day/week/month/all/N).
+- **`AIClient`**: параметры `user_id`, `username`, `bot_name`,
+  `usage_tracker`, `ai_source`; `complete(..., task=...)` — каждая
+  обращение (успех или финальная ошибка, включая ретраи) автоматически
+  записывается в трекер. Учёт не роняет запрос (try/except + warning).
+
 ## 0.5.0 (2026-08-06)
 
 ### Added

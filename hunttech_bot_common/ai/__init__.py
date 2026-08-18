@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import time
 from dataclasses import dataclass, field
@@ -19,6 +20,16 @@ from hunttech_bot_common.exceptions import (
     AISchemaValidationError,
     AITimeoutError,
 )
+
+from hunttech_bot_common.ai.usage import (
+    UsageRecord,
+    UsageTracker,
+    estimate_cost,
+    format_usage_report,
+    usage_period_from_args,
+)
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -99,12 +110,60 @@ class AIClient:
         model: str,
         provider: str = "openai",
         default_timeout: int = 120,
+        *,
+        user_id: int | None = None,
+        username: str | None = None,
+        bot_name: str = "",
+        usage_tracker: UsageTracker | None = None,
+        ai_source: str = "",
     ) -> None:
         self.endpoint = endpoint
         self.api_key = api_key
         self.model = model
         self.provider = provider
         self.default_timeout = default_timeout
+        # ── Учёт обращений к нейросети (08.2026) ────────────────────
+        # user_id/username — владелец активного ключа (чьи креды
+        # использованы); usage_tracker — общий реестр всех ботов
+        # (ai/usage.py); ai_source — «личные» | «админ (.env)».
+        self.user_id = user_id
+        self.username = username or ""
+        self.bot_name = bot_name
+        self.usage_tracker = usage_tracker
+        self.ai_source = ai_source
+
+    def _track_usage(
+        self,
+        status: str,
+        response: AIResponse | None = None,
+        task: str | None = None,
+    ) -> None:
+        """Записать обращение в UsageTracker (ok/error). Не роняет запрос."""
+        if self.usage_tracker is None:
+            return
+        usage = (response.usage if response is not None else {}) or {}
+        prompt_tokens = int(usage.get("prompt_tokens") or 0)
+        completion_tokens = int(usage.get("completion_tokens") or 0)
+        total_tokens = int(usage.get("total_tokens") or 0)
+        record = UsageRecord(
+            bot_name=self.bot_name,
+            user_id=self.user_id,
+            username=self.username or "",
+            provider=self.provider,
+            model=self.model,
+            task=task or "unknown",
+            status=status,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            duration_ms=(response.duration_ms if response is not None else 0.0),
+            cost_usd=estimate_cost(self.model, prompt_tokens, completion_tokens),
+            source=self.ai_source,
+        )
+        try:
+            self.usage_tracker.append(record)
+        except Exception as e:  # noqa: BLE001 — учёт не должен ронять запрос
+            logger.warning("ai usage track failed: %s", e)
 
     async def complete(
         self,
@@ -115,6 +174,7 @@ class AIClient:
         max_tokens: int | None = None,
         timeout: float | None = None,
         extra_body: dict[str, Any] | None = None,
+        task: str | None = None,
     ) -> AIResponse:
         """Send a completion request to the AI provider.
 
@@ -131,6 +191,9 @@ class AIClient:
             extra_body: Optional extra JSON body fields merged into the request
                 (e.g. {"thinking": {"type": "disabled"}} for DeepSeek reasoning
                 models, 08.2026).
+            task: Бизнес-задача для учёта токенов (08.2026) — имя AI-функции
+                (detect_intent, build_vacancy_description, …). Попадает в
+                отчёт /usage в разрез «По задачам».
 
         Returns:
             An AIResponse with content, duration_ms, and usage.
@@ -149,7 +212,7 @@ class AIClient:
 
         for attempt in range(1, max_attempts + 1):
             try:
-                return await self._do_complete(
+                response = await self._do_complete(
                     system_prompt=system_prompt,
                     user_prompt=user_prompt,
                     temperature=temperature,
@@ -157,15 +220,19 @@ class AIClient:
                     timeout=timeout,
                     extra_body=extra_body,
                 )
+                self._track_usage(status="ok", response=response, task=task)
+                return response
             except (AIConnectionError, AIRateLimitError, AITimeoutError) as exc:
                 last_exception = exc
                 if attempt < max_attempts:
                     await asyncio.sleep(delay)
                     delay *= 2  # exponential backoff
                 else:
+                    self._track_usage(status="error", task=task)
                     raise
             except (AIAuthenticationError, AIInvalidResponseError, AISchemaValidationError):
                 # Non-retryable errors
+                self._track_usage(status="error", task=task)
                 raise
 
     async def _do_complete(
@@ -298,4 +365,10 @@ __all__ = [
     "AIResponse",
     "parse_structured_response",
     "strip_json_markdown",
+    # ── Учёт обращений к нейросети (08.2026) ────────────────────────
+    "UsageRecord",
+    "UsageTracker",
+    "estimate_cost",
+    "format_usage_report",
+    "usage_period_from_args",
 ]
