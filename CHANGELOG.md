@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.2 (2026-08-18)
+
+### Added
+- **Учёт распознавания документов** (`recognition.engine`):
+  `recognize_document` принимает `usage_tracker`/`bot_name`/`user_id`/
+  `username` — каждый вызов `complete_structured` пишется в общий реестр
+  расходов (ok/error, provider/model из результата PluginLlm, токены и
+  cost_usd хоста). Учёт никогда не роняет распознавание.
+
 ## 0.6.0 (2026-08-18)
 
 ### Added

@@ -34,6 +34,54 @@ from hunttech_bot_common.recognition.schemas import (
 from hunttech_bot_common.recognition.text_hints import _apply_text_hints
 from hunttech_bot_common.recognition.ocr_space import recognize_text_with_ocr_space
 from hunttech_bot_common.recognition.yandex_vision import recognize_text_with_yandex_vision
+from hunttech_bot_common.ai.usage import UsageRecord, estimate_cost
+
+
+def _track_recognition_usage(
+    usage_tracker: Any,
+    *,
+    bot_name: str,
+    user_id: int | None,
+    username: str | None,
+    status: str,
+    provider: str,
+    model: str,
+    usage: Any,
+) -> None:
+    """Запись обращения к LLM в общий реестр расходов (0.6.2).
+
+    Хост-результат PluginLlm (complete_structured) уже несёт provider,
+    model и usage (input/output/total_tokens + cost_usd — оценка хоста).
+    Учёт никогда не роняет распознавание (try/except + warning).
+    """
+    if usage_tracker is None:
+        return
+    try:
+        u = usage or {}
+        input_tokens = int(getattr(u, "input_tokens", 0) or 0)
+        output_tokens = int(getattr(u, "output_tokens", 0) or 0)
+        total = int(getattr(u, "total_tokens", 0) or 0)
+        cost = getattr(u, "cost_usd", None)
+        if cost is None:
+            cost = estimate_cost(model, input_tokens, output_tokens)
+        record = UsageRecord(
+            bot_name=bot_name,
+            user_id=user_id,
+            username=username or "",
+            provider=provider or "unknown",
+            model=model or "unknown",
+            task="recognize_document",
+            status=status,
+            prompt_tokens=input_tokens,
+            completion_tokens=output_tokens,
+            total_tokens=total,
+            duration_ms=0.0,
+            cost_usd=float(cost or 0.0),
+            source="plugin_llm",
+        )
+        usage_tracker.append(record)
+    except Exception as exc:
+        logger.warning("ai usage track failed: %s", exc)
 
 def recognize_document(
     llm: Any,
@@ -43,6 +91,10 @@ def recognize_document(
     original_name: str = "",
     settings: Any = None,
     progress_callback: Callable[[str, str], None] | None = None,
+    usage_tracker: Any = None,
+    bot_name: str = "",
+    user_id: int | None = None,
+    username: str | None = None,
 ) -> RecognitionResult:
     """Recognize a document with optional stage progress reporting.
 
@@ -50,18 +102,32 @@ def recognize_document(
     pipeline stage (mime_detect, extract_text, ocr_scan, ocr_image,
     ai_parse, done). The callback runs in the calling thread — use
     ``asyncio.run_coroutine_threadsafe`` from async callers.
+
+    ``usage_tracker`` (UsageTracker из hunttech_bot_common.ai) — учёт
+    обращения к LLM в общем реестре расходов (bot_name/user_id/username —
+    для отчёта /usage).
     """
     settings = settings or None
     _emit(progress_callback, "mime_detect", "Определяю тип файла...")
     mime_type = _guess_mime(path)
     if _is_supported_image(mime_type):
-        return _recognize_image_document(llm, path, mime_type, caption=caption, original_name=original_name, settings=settings, progress_callback=progress_callback)
+        return _recognize_image_document(
+            llm, path, mime_type, caption=caption, original_name=original_name,
+            settings=settings, progress_callback=progress_callback,
+            usage_tracker=usage_tracker, bot_name=bot_name,
+            user_id=user_id, username=username,
+        )
 
     _emit(progress_callback, "extract_text", "Извлекаю текст из документа...")
     extracted_text = _extract_text(path, mime_type)
     if _is_pdf(mime_type, path):
         if not extracted_text.strip():
-            return _recognize_pdf_scan(llm, path, caption=caption, original_name=original_name, settings=settings, progress_callback=progress_callback)
+            return _recognize_pdf_scan(
+                llm, path, caption=caption, original_name=original_name,
+                settings=settings, progress_callback=progress_callback,
+                usage_tracker=usage_tracker, bot_name=bot_name,
+                user_id=user_id, username=username,
+            )
         if len(extracted_text.strip()) < _PDF_TEXT_MIN_CHARS:
             # Тонкий текстовый слой: извлечённого текста мало (обычно это
             # заголовок/URL/футер печати, а содержимое — картинкой). Доснимаем
@@ -74,6 +140,8 @@ def recognize_document(
                 original_name=original_name,
                 settings=settings,
                 progress_callback=progress_callback,
+                usage_tracker=usage_tracker, bot_name=bot_name,
+                user_id=user_id, username=username,
             )
 
     result = _recognize_text_document(
@@ -84,6 +152,8 @@ def recognize_document(
         caption=caption,
         original_name=original_name,
         progress_callback=progress_callback,
+        usage_tracker=usage_tracker, bot_name=bot_name,
+        user_id=user_id, username=username,
     )
     _emit(progress_callback, "done", "Реквизиты распознаны.")
     return result
@@ -109,6 +179,10 @@ def _recognize_text_document(
     source_provider: str = "",
     source_model: str = "",
     progress_callback: Callable[[str, str], None] | None = None,
+    usage_tracker: Any = None,
+    bot_name: str = "",
+    user_id: int | None = None,
+    username: str | None = None,
 ) -> RecognitionResult:
     if llm is None:
         raise RuntimeError("Hermes plugin LLM is unavailable")
@@ -127,15 +201,27 @@ def _recognize_text_document(
         )
     ]
 
-    result = llm.complete_structured(
-        instructions=INSTRUCTIONS,
-        input=inputs,
-        json_schema=None,
-        json_mode=False,
-        schema_name="hunttech_accounting_document",
-        temperature=0,
-        timeout=90,
-        purpose="hunttech_docs_recognition",
+    try:
+        result = llm.complete_structured(
+            instructions=INSTRUCTIONS,
+            input=inputs,
+            json_schema=None,
+            json_mode=False,
+            schema_name="hunttech_accounting_document",
+            temperature=0,
+            timeout=90,
+            purpose="hunttech_docs_recognition",
+        )
+    except Exception as exc:
+        _track_recognition_usage(
+            usage_tracker, bot_name=bot_name, user_id=user_id,
+            username=username, status="error", provider="", model="", usage=None,
+        )
+        raise
+    _track_recognition_usage(
+        usage_tracker, bot_name=bot_name, user_id=user_id,
+        username=username, status="ok",
+        provider=result.provider, model=result.model, usage=result.usage,
     )
     parsed = result.parsed if isinstance(result.parsed, dict) else _parse_json_fallback(result.text)
     logger.info(
@@ -175,6 +261,10 @@ def _recognize_image_document(
     original_name: str = "",
     settings: Any,
     progress_callback: Callable[[str, str], None] | None = None,
+    usage_tracker: Any = None,
+    bot_name: str = "",
+    user_id: int | None = None,
+    username: str | None = None,
 ) -> RecognitionResult:
     ocr_text, ocr_provider, ocr_model = _recognize_image_text(path, mime_type, settings, progress_callback=progress_callback)
     return _recognize_text_document(
@@ -187,6 +277,8 @@ def _recognize_image_document(
         source_provider=ocr_provider,
         source_model=ocr_model,
         progress_callback=progress_callback,
+        usage_tracker=usage_tracker, bot_name=bot_name,
+        user_id=user_id, username=username,
     )
 
 def _recognize_image_text(path: Path, mime_type: str, settings: Any,
@@ -223,6 +315,10 @@ def _recognize_pdf_scan(
     original_name: str = "",
     settings: Any,
     progress_callback: Callable[[str, str], None] | None = None,
+    usage_tracker: Any = None,
+    bot_name: str = "",
+    user_id: int | None = None,
+    username: str | None = None,
 ) -> RecognitionResult:
     _emit(progress_callback, "ocr_scan", "PDF похож на скан — готовлю страницу и распознаю через OCR...")
     with tempfile.TemporaryDirectory(prefix="hunttech-docs-pdf-") as temp_dir:
@@ -235,6 +331,8 @@ def _recognize_pdf_scan(
             original_name=original_name or path.name,
             settings=settings,
             progress_callback=progress_callback,
+            usage_tracker=usage_tracker, bot_name=bot_name,
+            user_id=user_id, username=username,
         )
 
 def _recognize_pdf_mixed(
@@ -246,6 +344,10 @@ def _recognize_pdf_mixed(
     original_name: str = "",
     settings: Any,
     progress_callback: Callable[[str, str], None] | None = None,
+    usage_tracker: Any = None,
+    bot_name: str = "",
+    user_id: int | None = None,
+    username: str | None = None,
 ) -> RecognitionResult:
     """PDF с тонким текстовым слоем: OCR рендера + извлечённый текст.
 
@@ -271,6 +373,8 @@ def _recognize_pdf_mixed(
         source_provider=ocr_provider,
         source_model=ocr_model,
         progress_callback=progress_callback,
+        usage_tracker=usage_tracker, bot_name=bot_name,
+        user_id=user_id, username=username,
     )
 
 def _combine_pdf_texts(extracted_text: str, ocr_text: str) -> str:
